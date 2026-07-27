@@ -70,15 +70,26 @@ def controllers(items: list[dict]) -> InlineKeyboardMarkup:
 
 
 def machine_selector(items: list[dict]) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(
-                text=item["name"],
+    rows: list[list[InlineKeyboardButton]] = []
+    for item in items:
+        controller = item.get("controller") or {}
+        controller_name = controller.get("name")
+        title = item["name"]
+        if controller_name:
+            title = f"🔧 {title} · {controller_name}"
+        else:
+            title = f"🔧 {title}"
+        rows.append([
+            InlineKeyboardButton(
+                text=title[:64],
                 callback_data=f"machine:{item['id']}",
-            )]
-            for item in items
-        ]
-    )
+            )
+        ])
+
+    rows.append([
+        InlineKeyboardButton(text="➕ Добавить ещё станок", callback_data="machine:add")
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def machine_dashboard(machine_id: int) -> InlineKeyboardMarkup:

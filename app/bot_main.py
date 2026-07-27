@@ -124,7 +124,7 @@ async def start(message: Message, state: FSMContext) -> None:
         return
 
     await message.answer(
-        "<b>⚙️ CNC Master Cloud v0.2.0</b>\n\n"
+        "<b>⚙️ CNC Master Cloud v0.2.1</b>\n\n"
         "Облачная база стоек ЧПУ и рабочие модули выбранного станка.",
         reply_markup=main_menu(),
     )
@@ -237,10 +237,24 @@ async def my_machine(message: Message) -> None:
     if not items:
         await message.answer("У вас пока нет станков. Нажмите «➕ Добавить станок».")
         return
-    if len(items) == 1:
-        await show_machine_dashboard(message, items[0])
-        return
-    await message.answer("Выберите станок:", reply_markup=machine_selector(items))
+
+    # Всегда показываем выбор профиля, даже если станок пока только один.
+    # Так интерфейс ведёт себя одинаково сегодня и после добавления новых станков.
+    await message.answer(
+        "<b>Выберите станок, с которым хотите работать:</b>",
+        reply_markup=machine_selector(items),
+    )
+
+
+@router.callback_query(F.data == "machine:add")
+async def add_machine_from_selector(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await state.set_state(MachineWizard.choosing_type)
+    await callback.message.edit_text(
+        "<b>1/4. Выберите тип оборудования:</b>",
+        reply_markup=machine_types(),
+    )
+    await callback.answer()
 
 
 @router.callback_query(F.data.startswith("machine:"))
@@ -600,7 +614,7 @@ async def controllers_list(message: Message) -> None:
 @router.message(F.text == "ℹ️ О проекте")
 async def about(message: Message) -> None:
     await message.answer(
-        "<b>CNC Master Cloud v0.2.0</b>\n\n"
+        "<b>CNC Master Cloud v0.2.1</b>\n\n"
         "Модуль «Мой станок»: характеристики, возможности осей, инструмент, режимы, операции, G-код, ошибки и техпроцесс.\n\n"
         "Создатель: <b>Єрошов Іван</b>"
     )

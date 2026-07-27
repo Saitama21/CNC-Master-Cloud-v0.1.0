@@ -51,7 +51,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.2.0",
+    version="0.2.1",
     description="Онлайн-база стоек ЧПУ, станков, операций и API Telegram-бота.",
     lifespan=lifespan,
 )

@@ -1,6 +1,6 @@
 {
   "project": "CNC Master Cloud",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "module": "My Machine",
   "features": [
     "machine characteristics",
@@ -11,5 +11,6 @@
     "tech process",
     "G-code static checks",
     "alarm triage"
-  ]
+  ],
+  "change": "Always show machine selection, including for a single saved machine"
 }
