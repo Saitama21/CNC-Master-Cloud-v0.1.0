@@ -94,10 +94,10 @@ def machine_selector(items: list[dict]) -> InlineKeyboardMarkup:
 
 def machine_dashboard(machine_id: int) -> InlineKeyboardMarkup:
     rows = [
-        [("📋 Характеристики", "char"), ("🧭 Возможности X/Y/Z/C", "caps")],
-        [("🔩 Подобрать инструмент", "tool"), ("🧮 Рассчитать режимы", "modes")],
-        [("➕ Создать операцию", "operation"), ("🛡 Проверить G-код", "gcode")],
-        [("❗ Ошибки стойки", "alarms"), ("📝 Техпроцесс", "process")],
+        [("📋 Паспорт", "char"), ("🧭 Возможности", "caps")],
+        [("🔩 Инструмент", "tool"), ("🧮 Режимы", "modes")],
+        [("➕ Операция", "operation"), ("🛡 G-код", "gcode")],
+        [("❗ Ошибки", "alarms"), ("📝 Техпроцесс", "process")],
     ]
     return InlineKeyboardMarkup(
         inline_keyboard=[
