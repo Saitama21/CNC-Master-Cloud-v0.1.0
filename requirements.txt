@@ -1,0 +1,8 @@
+aiogram>=3.28,<4
+aiohttp>=3.10,<4
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+SQLAlchemy[asyncio]>=2.0,<2.2
+asyncpg>=0.29,<1
+pydantic-settings>=2.5,<3
+redis>=5,<7
