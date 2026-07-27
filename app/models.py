@@ -296,3 +296,22 @@ class ProcessPlan(Base):
     material_code: Mapped[str | None] = mapped_column(String(60), nullable=True)
     operations: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class ClientProject(Base):
+    __tablename__ = "client_projects"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    machine_profile_id: Mapped[int] = mapped_column(
+        ForeignKey("machine_profiles.id", ondelete="CASCADE"), index=True
+    )
+    title: Mapped[str] = mapped_column(String(250), index=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    generated: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

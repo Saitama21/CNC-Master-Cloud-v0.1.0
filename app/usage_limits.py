@@ -19,6 +19,9 @@ FEATURES = {
     "alarms": "Ошибки стойки",
     "process": "Техпроцесс",
     "codes": "G/M-коды",
+    "engineering_client": "Инженерный CNC-клиент",
+    "pdf_scan": "Сканирование чертежа PDF",
+    "gcode_generate": "Расчёт и генерация G-кода",
 }
 
 DEFAULT_LIMITS = {
@@ -30,6 +33,9 @@ DEFAULT_LIMITS = {
     "alarms": 30,
     "process": 20,
     "codes": 100,
+    "engineering_client": 30,
+    "pdf_scan": 10,
+    "gcode_generate": 20,
 }
 
 

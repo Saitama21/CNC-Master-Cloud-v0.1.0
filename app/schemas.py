@@ -288,3 +288,32 @@ class AdminUserOut(BaseModel):
     full_name: str
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+
+class ClientGenerateRequest(BaseModel):
+    telegram_id: int = 0
+    machine_id: int = 0
+    title: str = Field(default="CNC project", min_length=1, max_length=250)
+    machine: dict[str, Any] = Field(default_factory=dict)
+    stock: dict[str, Any]
+    contour: dict[str, Any]
+    operations: list[dict[str, Any]] = Field(min_length=1)
+
+
+class ClientProjectCreate(BaseModel):
+    telegram_id: int
+    machine_id: int
+    title: str = Field(min_length=1, max_length=250)
+    payload: dict[str, Any]
+    generated: dict[str, Any] | None = None
+
+
+class ClientProjectOut(BaseModel):
+    id: int
+    machine_profile_id: int
+    title: str
+    payload: dict[str, Any]
+    generated: dict[str, Any] | None = None
+    created_at: datetime
+    updated_at: datetime
+    model_config = ConfigDict(from_attributes=True)

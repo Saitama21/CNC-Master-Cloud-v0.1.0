@@ -1,18 +1,18 @@
 {
-  "project": "CNC Master Cloud FULL PRO",
-  "version": "1.0.0",
+  "project": "CNC Master Cloud ENGINEERING CLIENT",
+  "version": "2.0.0",
   "creator": "Єрошов Іван",
   "catalog_items": 1067,
   "features": [
-    "multi-operation tool plan",
-    "ready tool catalog",
-    "saved tools per machine",
-    "13 CNC calculators",
-    "hourly feature quotas",
-    "allowed usage hours",
-    "per-user overrides",
-    "custom tool catalog admin",
-    "G-code checks",
-    "controller alarm triage"
+    "interactive X/Z contour editor",
+    "PDF page rendering and semi-automatic contour candidate",
+    "manual dimension calibration and X0/Z0 origin",
+    "actual stock versus final contour overlay",
+    "multi-operation tool plan and ready tool catalog",
+    "ShopTurn Stock Removal field cards",
+    "tool-by-tool instructions",
+    "project G-code and MPF export",
+    "saved engineering projects",
+    "hourly admin limits for client, PDF scan, and G-code generation"
   ]
 }

@@ -2,7 +2,7 @@ ADMIN_HTML = r"""<!doctype html>
 <html lang="ru">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CNC Master Cloud FULL PRO — Админ</title>
+<title>CNC Master Cloud ENGINEERING CLIENT — Админ</title>
 <style>
 :root{font-family:Inter,system-ui,sans-serif;color:#ecf2f8;background:#0d1217}body{max-width:1380px;margin:auto;padding:22px}
 h1{margin:0}.muted{color:#95a4b2}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
@@ -15,7 +15,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:8px;borde
 @media(max-width:700px){.row{grid-template-columns:1fr}}
 </style></head>
 <body>
-<h1>⚙️ CNC Master Cloud FULL PRO</h1><div class="muted">Админ-панель · лимиты, пользователи, каталог и база</div>
+<h1>⚙️ CNC Master Cloud ENGINEERING CLIENT</h1><div class="muted">Админ-панель · лимиты, пользователи, каталог и база</div>
 <section class="card"><label>ADMIN_KEY</label><input id="key" type="password" placeholder="Ключ из Railway Variables"><button onclick="loadAll()">Подключиться</button><div id="status" class="muted"></div></section>
 <div id="stats" class="statgrid"></div>
 <div class="grid">

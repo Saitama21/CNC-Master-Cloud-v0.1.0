@@ -1,0 +1,30 @@
+CNC Master Cloud ENGINEERING CLIENT v2.0.0
+
+ОБНОВЛЕНИЕ ПОВЕРХ FULL PRO v1.0.0
+
+1. Распакуйте архив UPDATE.
+2. Загрузите содержимое в корень GitHub-репозитория с заменой существующих файлов.
+3. Проверьте пути: app/client_ui.py и app/cnc_client.py, а не app/app/...
+4. Railway должен пересобрать ОБА сервиса: api и bot.
+5. В сервис bot добавьте переменную:
+   PUBLIC_BASE_URL=https://ПУБЛИЧНЫЙ-ДОМЕН-API.up.railway.app
+6. В api уже должны быть ADMIN_TELEGRAM_IDS, ADMIN_KEY, DATABASE_URL.
+7. Откройте https://ПУБЛИЧНЫЙ-ДОМЕН-API.up.railway.app/client
+   либо в Telegram: Мой станок → выбрать станок → CNC-клиент.
+
+Новые зависимости API:
+- python-multipart
+- PyMuPDF
+- numpy
+- opencv-python-headless
+
+Новые функции лимитов в /admin:
+- engineering_client
+- pdf_scan
+- gcode_generate
+
+Новая таблица client_projects создаётся автоматически при запуске API.
+
+ВАЖНО:
+Распознавание PDF полуавтоматическое. Масштаб, X0/Z0 и точки контура подтверждает оператор.
+G-код является проектным. Обязательны симуляция, проверка нулей/коррекций/зажимов и сухой прогон.

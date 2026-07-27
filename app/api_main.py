@@ -2,13 +2,15 @@ from contextlib import asynccontextmanager
 import secrets
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, UploadFile
 from fastapi.responses import HTMLResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.admin_ui import ADMIN_HTML
+from app.client_ui import CLIENT_HTML
+from app.cnc_client import ClientValidationError, analyze_pdf_bytes, generate_engineering_plan
 from app.catalog_data import CATEGORY_LABELS, catalog_count, get_item, search_catalog
 from app.config import settings
 from app.db import SessionLocal, get_session, init_db
@@ -25,6 +27,7 @@ from app.models import (
     ProcessPlan,
     SavedTool,
     UserFeatureOverride,
+    ClientProject,
 )
 from app.schemas import (
     AdminStats,
@@ -56,6 +59,9 @@ from app.schemas import (
     UsageDecision,
     UserFeatureOverrideCreate,
     UserFeatureOverrideOut,
+    ClientGenerateRequest,
+    ClientProjectCreate,
+    ClientProjectOut,
 )
 from app.seed import seed_database
 from app.usage_limits import consume_feature, ensure_default_policies
@@ -72,8 +78,8 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title=settings.app_name,
-    version="1.0.0",
-    description="CNC Master Cloud FULL PRO: база стоек, инструментов, лимитов, операций и Telegram API.",
+    version="2.0.0",
+    description="CNC Master Cloud Engineering Client: PDF, контуры X/Z, Stock Removal, инструмент и G-код.",
     lifespan=lifespan,
 )
 
@@ -92,6 +98,7 @@ async def root() -> dict[str, str]:
         "status": "online",
         "docs": "/docs",
         "admin": "/admin",
+        "client": "/client",
     }
 
 
@@ -103,6 +110,134 @@ async def health() -> dict[str, str]:
 @app.get("/admin", response_class=HTMLResponse, include_in_schema=False)
 async def admin_page() -> str:
     return ADMIN_HTML
+
+
+@app.get("/client", response_class=HTMLResponse, include_in_schema=False)
+async def engineering_client_page() -> str:
+    return CLIENT_HTML
+
+
+async def _require_feature(
+    session: AsyncSession, telegram_id: int, feature_key: str, *, consume: bool = True
+) -> dict:
+    if telegram_id <= 0:
+        raise HTTPException(status_code=422, detail="Укажите цифровой Telegram ID.")
+    decision = await consume_feature(
+        session, telegram_id=telegram_id, feature_key=feature_key, consume=consume
+    )
+    if not decision.get("allowed"):
+        raise HTTPException(status_code=429, detail=decision.get("reason") or "Функция недоступна")
+    return decision
+
+
+@app.post("/api/v1/client/pdf/analyze", tags=["engineering-client"])
+async def client_analyze_pdf(
+    file: UploadFile = File(...),
+    page_number: int = Form(default=1),
+    telegram_id: int = Form(default=0),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    await _require_feature(session, telegram_id, "pdf_scan")
+    if file.content_type not in {"application/pdf", "application/octet-stream"}:
+        raise HTTPException(status_code=415, detail="Загрузите PDF-файл.")
+    data = await file.read()
+    try:
+        return analyze_pdf_bytes(data, page_number)
+    except ClientValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/api/v1/client/generate", tags=["engineering-client"])
+async def client_generate(
+    payload: ClientGenerateRequest,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    await _require_feature(session, payload.telegram_id, "gcode_generate")
+    if payload.machine_id > 0:
+        machine = await session.scalar(
+            select(MachineProfile).join(User).where(
+                MachineProfile.id == payload.machine_id,
+                User.telegram_id == payload.telegram_id,
+            )
+        )
+        if machine is None:
+            raise HTTPException(status_code=404, detail="Станок пользователя не найден.")
+    try:
+        return generate_engineering_plan(payload.model_dump())
+    except ClientValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post(
+    "/api/v1/client/projects", response_model=ClientProjectOut, tags=["engineering-client"]
+)
+async def create_client_project(
+    payload: ClientProjectCreate,
+    session: AsyncSession = Depends(get_session),
+) -> ClientProject:
+    await _require_feature(session, payload.telegram_id, "engineering_client")
+    user = await session.scalar(select(User).where(User.telegram_id == payload.telegram_id))
+    machine = await session.scalar(
+        select(MachineProfile).join(User).where(
+            MachineProfile.id == payload.machine_id,
+            User.telegram_id == payload.telegram_id,
+        )
+    )
+    if user is None or machine is None:
+        raise HTTPException(status_code=404, detail="Пользователь или станок не найден.")
+    item = ClientProject(
+        user_id=user.id,
+        machine_profile_id=machine.id,
+        title=payload.title,
+        payload=payload.payload,
+        generated=payload.generated,
+    )
+    session.add(item)
+    await session.commit()
+    await session.refresh(item)
+    return item
+
+
+@app.get(
+    "/api/v1/users/{telegram_id}/machines/{machine_id}/client-projects",
+    response_model=list[ClientProjectOut],
+    tags=["engineering-client"],
+)
+async def list_client_projects(
+    telegram_id: int, machine_id: int, session: AsyncSession = Depends(get_session)
+) -> list[ClientProject]:
+    machine = await session.scalar(
+        select(MachineProfile).join(User).where(
+            MachineProfile.id == machine_id, User.telegram_id == telegram_id
+        )
+    )
+    if machine is None:
+        raise HTTPException(status_code=404, detail="Станок не найден.")
+    result = await session.scalars(
+        select(ClientProject)
+        .where(ClientProject.machine_profile_id == machine_id)
+        .order_by(ClientProject.updated_at.desc(), ClientProject.id.desc())
+    )
+    return list(result)
+
+
+@app.get(
+    "/api/v1/users/{telegram_id}/client-projects/{project_id}",
+    response_model=ClientProjectOut,
+    tags=["engineering-client"],
+)
+async def get_client_project(
+    telegram_id: int, project_id: int, session: AsyncSession = Depends(get_session)
+) -> ClientProject:
+    item = await session.scalar(
+        select(ClientProject).join(User, ClientProject.user_id == User.id).where(
+            ClientProject.id == project_id, User.telegram_id == telegram_id
+        )
+    )
+    if item is None:
+        raise HTTPException(status_code=404, detail="Проект не найден.")
+    return item
+
 
 
 @app.get(

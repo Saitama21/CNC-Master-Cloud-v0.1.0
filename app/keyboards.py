@@ -69,6 +69,7 @@ def machine_dashboard(machine_id: int) -> InlineKeyboardMarkup:
         [("🔩 Инструмент", "tool"), ("🧮 Режимы", "modes")],
         [("➕ Операции", "operation"), ("🛡 G-код", "gcode")],
         [("❗ Ошибки", "alarms"), ("📝 Техпроцесс", "process")],
+        [("🖥 CNC-клиент", "client")],
     ]
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=title, callback_data=f"mact:{machine_id}:{action}")

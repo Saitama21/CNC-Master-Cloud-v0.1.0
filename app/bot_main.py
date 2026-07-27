@@ -160,7 +160,7 @@ async def start(message: Message, state: FSMContext) -> None:
         await message.answer("⚠️ Сервер базы временно недоступен. Проверь запуск API и базы.")
         return
     await message.answer(
-        "<b>⚙️ CNC Master Cloud FULL PRO v1.0.0</b>\n\n"
+        "<b>⚙️ CNC Master Cloud ENGINEERING CLIENT v2.0.0</b>\n\n"
         f"Каталог: <b>{categories.get('count', 0)}+</b> стандартных позиций инструмента.\n"
         "Подбор нескольких операций, калькуляторы, сохранённые комплекты и управляемые лимиты.",
         reply_markup=main_menu(),
@@ -354,6 +354,21 @@ async def machine_action(callback: CallbackQuery, state: FSMContext) -> None:
     elif action == "process":
         if await allowed(callback.from_user.id, "process", callback.message):
             await show_process(callback.message, callback.from_user.id, machine_id, machine["name"])
+    elif action == "client":
+        if await allowed(callback.from_user.id, "engineering_client", callback.message):
+            base_url = settings.public_base_url.rstrip("/")
+            if not base_url:
+                await callback.message.answer(
+                    "⚠️ В Railway не задана переменная PUBLIC_BASE_URL для сервиса bot. "
+                    "Укажите публичный домен API, например https://api-xxxx.up.railway.app"
+                )
+            else:
+                url = f"{base_url}/client?telegram_id={callback.from_user.id}&machine_id={machine_id}"
+                await callback.message.answer(
+                    "<b>🖥 Инженерный CNC-клиент</b>\n"
+                    "PDF → контур X/Z → Stock Removal → траектория → G-код\n\n"
+                    f"<a href=\"{html.escape(url)}\">Открыть клиент в браузере</a>"
+                )
     await callback.answer()
 
 
@@ -792,7 +807,7 @@ async def about(message: Message) -> None:
     except CNCAPIError:
         info = {"count": "—"}
     await message.answer(
-        "<b>CNC Master Cloud FULL PRO v1.0.0</b>\n"
+        "<b>CNC Master Cloud ENGINEERING CLIENT v2.0.0</b>\n"
         "Создатель: <b>Єрошов Іван</b>\n"
         f"Стандартных позиций инструмента: <b>{info.get('count')}</b>+\n\n"
         "Модули: станки и стойки, подбор инструмента, готовый каталог, несколько операций, "

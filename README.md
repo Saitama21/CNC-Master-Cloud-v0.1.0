@@ -1,8 +1,15 @@
-# ⚙️ CNC Master Cloud FULL PRO v1.0.0
+# ⚙️ CNC Master Cloud ENGINEERING CLIENT v2.0.0
 
 Telegram-платформа для операторов, наладчиков и технологов ЧПУ.
 
 **Создатель:** Єрошов Іван
+
+## 🖥 Инженерный веб-клиент
+
+Открывается по адресу `/client` на публичном домене API. Клиент умеет загружать PDF, калибровать масштаб, рисовать и редактировать контур X/Z, сравнивать фактическую заготовку с итоговой формой, строить проходы, показывать поля ShopTurn Stock Removal, выдавать пошаговую карту по каждому инструменту и формировать проектный G-код.
+
+Подробная инструкция: `ENGINEERING_CLIENT_README.md`.
+
 
 ## Что входит в FULL PRO
 
@@ -93,6 +100,7 @@ DATABASE_URL=postgresql+asyncpg://cnc:cnc@db:5432/cnc_master
 REDIS_URL=redis://redis:6379/0
 API_BASE_URL=http://api:8000
 DEFAULT_TIMEZONE=Europe/Kyiv
+PUBLIC_BASE_URL=https://your-api-domain.up.railway.app
 ```
 
 `ADMIN_TELEGRAM_IDS` — необязательный список Telegram ID администраторов. Эти пользователи обходят часовые лимиты.

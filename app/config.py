@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     admin_key: str = "change-me-now"
     admin_telegram_ids: str = ""
     default_timezone: str = "Europe/Kyiv"
+    public_base_url: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",
