@@ -22,9 +22,14 @@ from app.cnc_logic import (
     capability_lines,
     diagnose_alarm,
     known_specs,
-    tool_recommendation,
 )
 from app.config import settings
+from app.tool_catalog import (
+    ISO_LABELS,
+    format_tool_selection,
+    select_tool,
+    tool_parameter_prompt,
+)
 from app.keyboards import (
     calculation_choices,
     controllers as controllers_keyboard,
@@ -34,6 +39,7 @@ from app.keyboards import (
     main_menu,
     manufacturers as manufacturers_keyboard,
     material_choices,
+    tool_material_choices,
     operation_choices,
 )
 
@@ -62,6 +68,7 @@ class CodeSearch(StatesGroup):
 class ToolWizard(StatesGroup):
     choosing_operation = State()
     choosing_material = State()
+    entering_parameters = State()
 
 
 class ModeWizard(StatesGroup):
@@ -124,7 +131,7 @@ async def start(message: Message, state: FSMContext) -> None:
         return
 
     await message.answer(
-        "<b>⚙️ CNC Master Cloud v0.2.2</b>\n\n"
+        "<b>⚙️ CNC Master Cloud v0.3.0</b>\n\n"
         "Облачная база стоек ЧПУ и рабочие модули выбранного станка.",
         reply_markup=main_menu(),
     )
@@ -376,33 +383,84 @@ async def tool_choose_operation(callback: CallbackQuery, state: FSMContext) -> N
         await callback.answer()
         return
     await state.set_state(ToolWizard.choosing_material)
-    await callback.message.edit_text("Выберите материал:", reply_markup=material_choices(materials, "toolmat"))
+    await callback.message.edit_text(
+        "Выберите материал из базы или только ISO-группу:",
+        reply_markup=tool_material_choices(materials),
+    )
     await callback.answer()
 
 
 @router.callback_query(ToolWizard.choosing_material, F.data.startswith("toolmat:"))
 async def tool_choose_material(callback: CallbackQuery, state: FSMContext) -> None:
     material_id = int(callback.data.split(":", 1)[1])
-    materials = await api.materials()
+    try:
+        materials = await api.materials()
+    except CNCAPIError as exc:
+        await callback.message.answer(f"⚠️ {html.escape(str(exc))}")
+        await callback.answer()
+        return
     material = next((item for item in materials if item["id"] == material_id), None)
-    data = await state.get_data()
     if material is None:
         await callback.message.answer("Материал не найден.")
         await callback.answer()
         return
-    rec = tool_recommendation(data["operation"], material.get("iso_group"))
-    await state.clear()
+    data = await state.get_data()
+    operation = data["operation"]
+    await state.update_data(
+        material_name=material["name"],
+        iso_group=(material.get("iso_group") or "P").upper(),
+    )
+    await state.set_state(ToolWizard.entering_parameters)
     await callback.message.edit_text(
-        f"<b>🔩 Подбор инструмента</b>\n\n"
-        f"Операция: {html.escape(OPERATION_LABELS.get(data['operation'], data['operation']))}\n"
-        f"Материал: {html.escape(material['name'])} (ISO {html.escape(material.get('iso_group') or '—')})\n\n"
-        f"Державка/инструмент: {html.escape(rec['tool'])}\n"
-        f"Пластина/режущая часть: {html.escape(rec['insert'])}\n"
-        f"Применение: {html.escape(rec['use'])}\n"
-        f"Материал: {html.escape(rec['material'])}\n\n"
-        "⚠️ Это подбор семейства, а не конкретного артикула. Размеры державки, посадка и направление проверяются по станку."
+        f"<b>Материал:</b> {html.escape(material['name'])} (ISO {html.escape(material.get('iso_group') or '—')})\n\n"
+        + tool_parameter_prompt(operation)
     )
     await callback.answer()
+
+
+@router.callback_query(ToolWizard.choosing_material, F.data.startswith("tooliso:"))
+async def tool_choose_iso_group(callback: CallbackQuery, state: FSMContext) -> None:
+    iso_group = callback.data.split(":", 1)[1].upper()
+    if iso_group not in ISO_LABELS:
+        await callback.answer("Неизвестная ISO-группа", show_alert=True)
+        return
+    data = await state.get_data()
+    operation = data["operation"]
+    material_name = f"ISO {iso_group} — {ISO_LABELS[iso_group]}"
+    await state.update_data(material_name=material_name, iso_group=iso_group)
+    await state.set_state(ToolWizard.entering_parameters)
+    await callback.message.edit_text(
+        f"<b>Материал:</b> {html.escape(material_name)}\n\n" + tool_parameter_prompt(operation)
+    )
+    await callback.answer()
+
+
+@router.message(ToolWizard.entering_parameters, F.text)
+async def tool_enter_parameters(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    machine = await get_machine_or_error(message.from_user.id, data["machine_id"], message)
+    if machine is None:
+        return
+    try:
+        selection = select_tool(
+            data["operation"],
+            data["iso_group"],
+            message.text,
+            machine,
+        )
+    except ValueError as exc:
+        await message.answer(
+            f"⚠️ {html.escape(str(exc))}\n\n" + tool_parameter_prompt(data["operation"])
+        )
+        return
+    result = format_tool_selection(
+        selection,
+        data["operation"],
+        html.escape(data["material_name"]),
+        html.escape(data["iso_group"]),
+    )
+    await state.clear()
+    await message.answer(result[:4000], reply_markup=main_menu())
 
 
 @router.callback_query(ModeWizard.choosing_mode, F.data.startswith("calc:"))
@@ -614,7 +672,7 @@ async def controllers_list(message: Message) -> None:
 @router.message(F.text == "ℹ️ О проекте")
 async def about(message: Message) -> None:
     await message.answer(
-        "<b>CNC Master Cloud v0.2.2</b>\n\n"
+        "<b>CNC Master Cloud v0.3.0</b>\n\n"
         "Модуль «Мой станок»: характеристики, возможности осей, инструмент, режимы, операции, G-код, ошибки и техпроцесс.\n\n"
         "Создатель: <b>Єрошов Іван</b>"
     )

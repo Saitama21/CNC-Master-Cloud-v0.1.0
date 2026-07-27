@@ -131,6 +131,24 @@ def material_choices(items: list[dict], prefix: str) -> InlineKeyboardMarkup:
     )
 
 
+def tool_material_choices(items: list[dict]) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = []
+    for item in items[:20]:
+        rows.append([InlineKeyboardButton(
+            text=f"{item['code']} — {item['name']}",
+            callback_data=f"toolmat:{item['id']}",
+        )])
+    rows.extend([
+        [InlineKeyboardButton(text="ISO P — стали", callback_data="tooliso:P")],
+        [InlineKeyboardButton(text="ISO M — нержавейка", callback_data="tooliso:M")],
+        [InlineKeyboardButton(text="ISO K — чугун", callback_data="tooliso:K")],
+        [InlineKeyboardButton(text="ISO N — алюминий / цветные / пластик", callback_data="tooliso:N")],
+        [InlineKeyboardButton(text="ISO S — титан / жаропрочные", callback_data="tooliso:S")],
+        [InlineKeyboardButton(text="ISO H — закалённые", callback_data="tooliso:H")],
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
 def calculation_choices() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
