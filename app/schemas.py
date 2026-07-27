@@ -167,3 +167,124 @@ class AdminStats(BaseModel):
     users: int
     machine_profiles: int
     operations: int
+    catalog_items: int
+    policies: int
+    saved_tools: int
+    process_plans: int
+
+
+class ToolCatalogItemOut(BaseModel):
+    key: str
+    category: str
+    subcategory: str
+    name: str
+    code: str
+    operation_tags: list[str]
+    iso_groups: list[str]
+    dimensions: str
+    description: str
+    compatibility: str
+    grade_hint: str
+    source: str
+
+
+class CustomToolItemCreate(ToolCatalogItemOut):
+    active: bool = True
+
+
+class SavedToolCreate(BaseModel):
+    telegram_id: int
+    machine_id: int
+    tool_key: str
+    tool_snapshot: dict[str, Any]
+
+
+class SavedToolOut(BaseModel):
+    id: int
+    machine_profile_id: int
+    tool_key: str
+    tool_snapshot: dict[str, Any]
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProcessPlanCreate(BaseModel):
+    telegram_id: int
+    machine_id: int
+    title: str = Field(min_length=2, max_length=250)
+    material_code: str | None = None
+    operations: list[dict[str, Any]] = Field(min_length=1)
+
+
+class ProcessPlanOut(BaseModel):
+    id: int
+    machine_profile_id: int
+    title: str
+    material_code: str | None = None
+    operations: list[dict[str, Any]]
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UsageConsume(BaseModel):
+    telegram_id: int
+    feature_key: str = Field(min_length=2, max_length=80)
+    consume: bool = True
+
+
+class UsageDecision(BaseModel):
+    allowed: bool
+    feature_key: str
+    title: str
+    reason: str | None = None
+    limit_per_hour: int | None = None
+    used: int = 0
+    remaining: int | None = None
+    reset_at: datetime | None = None
+
+
+class FeaturePolicyBase(BaseModel):
+    feature_key: str = Field(min_length=2, max_length=80)
+    title: str = Field(min_length=2, max_length=160)
+    enabled: bool = True
+    limit_per_hour: int | None = Field(default=None, ge=0, le=100000)
+    allowed_start_hour: int | None = Field(default=None, ge=0, le=23)
+    allowed_end_hour: int | None = Field(default=None, ge=0, le=23)
+    timezone: str = "Europe/Kyiv"
+
+
+class FeaturePolicyOut(FeaturePolicyBase):
+    id: int
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserFeatureOverrideCreate(BaseModel):
+    telegram_id: int
+    feature_key: str
+    enabled: bool | None = None
+    limit_per_hour: int | None = Field(default=None, ge=0, le=100000)
+    allowed_start_hour: int | None = Field(default=None, ge=0, le=23)
+    allowed_end_hour: int | None = Field(default=None, ge=0, le=23)
+    unlimited: bool = False
+    note: str | None = None
+
+
+class UserFeatureOverrideOut(BaseModel):
+    id: int
+    feature_key: str
+    enabled: bool | None = None
+    limit_per_hour: int | None = None
+    allowed_start_hour: int | None = None
+    allowed_end_hour: int | None = None
+    unlimited: bool
+    note: str | None = None
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AdminUserOut(BaseModel):
+    id: int
+    telegram_id: int
+    username: str | None = None
+    full_name: str
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)

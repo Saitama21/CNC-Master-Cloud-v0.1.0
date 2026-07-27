@@ -78,3 +78,47 @@ class CNCAPI:
 
     async def create_operation(self, payload: dict[str, Any]) -> dict[str, Any]:
         return await self.request("POST", "/api/v1/operations", json=payload)
+    async def tool_categories(self) -> dict[str, Any]:
+        return await self.request("GET", "/api/v1/tools/categories")
+
+    async def tools(
+        self, *, category: str | None = None, operation: str | None = None,
+        iso_group: str | None = None, query: str | None = None,
+        page: int = 0, limit: int = 8,
+    ) -> list[dict[str, Any]]:
+        params: dict[str, Any] = {"page": page, "limit": limit}
+        if category:
+            params["category"] = category
+        if operation:
+            params["operation"] = operation
+        if iso_group:
+            params["iso_group"] = iso_group
+        if query:
+            params["q"] = query
+        return await self.request("GET", "/api/v1/tools", params=params)
+
+    async def tool(self, tool_key: str) -> dict[str, Any]:
+        return await self.request("GET", f"/api/v1/tools/{tool_key}")
+
+    async def save_tool(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self.request("POST", "/api/v1/saved-tools", json=payload)
+
+    async def saved_tools(self, telegram_id: int, machine_id: int) -> list[dict[str, Any]]:
+        return await self.request(
+            "GET", f"/api/v1/users/{telegram_id}/machines/{machine_id}/saved-tools"
+        )
+
+    async def create_process_plan(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self.request("POST", "/api/v1/process-plans", json=payload)
+
+    async def process_plans(self, telegram_id: int, machine_id: int) -> list[dict[str, Any]]:
+        return await self.request(
+            "GET", f"/api/v1/users/{telegram_id}/machines/{machine_id}/process-plans"
+        )
+
+    async def consume(self, telegram_id: int, feature_key: str, *, consume: bool = True) -> dict[str, Any]:
+        return await self.request(
+            "POST", "/api/v1/usage/consume",
+            json={"telegram_id": telegram_id, "feature_key": feature_key, "consume": consume},
+        )
+

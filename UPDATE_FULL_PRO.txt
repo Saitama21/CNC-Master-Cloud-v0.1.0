@@ -1,0 +1,23 @@
+CNC Master Cloud FULL PRO v1.0.0
+
+ВАЖНО: обновить оба Railway-сервиса: api и bot.
+
+Новые файлы:
+- app/catalog_data.py
+- app/calculators.py
+- app/usage_limits.py
+
+Основные изменённые файлы:
+- app/api_main.py
+- app/bot_main.py
+- app/models.py
+- app/schemas.py
+- app/api_client.py
+- app/keyboards.py
+- app/admin_ui.py
+- app/config.py
+
+После запуска API автоматически создаст новые таблицы для лимитов, статистики использования,
+сохранённых инструментов, пользовательских инструментов и комплектов операций.
+
+Откройте /admin и задайте лимиты на функции.

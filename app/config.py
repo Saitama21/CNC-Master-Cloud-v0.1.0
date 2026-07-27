@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://cnc:cnc@db:5432/cnc_master"
     redis_url: str = "redis://redis:6379/0"
     admin_key: str = "change-me-now"
+    admin_telegram_ids: str = ""
+    default_timezone: str = "Europe/Kyiv"
 
     model_config = SettingsConfigDict(
         env_file=".env",

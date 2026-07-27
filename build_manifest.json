@@ -1,16 +1,18 @@
 {
-  "project": "CNC Master Cloud",
-  "version": "0.2.1",
-  "module": "My Machine",
+  "project": "CNC Master Cloud FULL PRO",
+  "version": "1.0.0",
+  "creator": "Єрошов Іван",
+  "catalog_items": 1067,
   "features": [
-    "machine characteristics",
-    "axis capabilities",
-    "tool family selection",
-    "cutting calculator",
-    "stored operations",
-    "tech process",
-    "G-code static checks",
-    "alarm triage"
-  ],
-  "change": "Always show machine selection, including for a single saved machine"
+    "multi-operation tool plan",
+    "ready tool catalog",
+    "saved tools per machine",
+    "13 CNC calculators",
+    "hourly feature quotas",
+    "allowed usage hours",
+    "per-user overrides",
+    "custom tool catalog admin",
+    "G-code checks",
+    "controller alarm triage"
+  ]
 }

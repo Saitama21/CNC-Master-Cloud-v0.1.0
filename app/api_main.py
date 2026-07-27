@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.admin_ui import ADMIN_HTML
+from app.catalog_data import CATEGORY_LABELS, catalog_count, get_item, search_catalog
 from app.config import settings
 from app.db import SessionLocal, get_session, init_db
 from app.models import (
@@ -19,6 +20,11 @@ from app.models import (
     Manufacturer,
     Material,
     User,
+    CustomToolItem,
+    FeaturePolicy,
+    ProcessPlan,
+    SavedTool,
+    UserFeatureOverride,
 )
 from app.schemas import (
     AdminStats,
@@ -37,8 +43,22 @@ from app.schemas import (
     MaterialOut,
     UserOut,
     UserUpsert,
+    AdminUserOut,
+    CustomToolItemCreate,
+    FeaturePolicyBase,
+    FeaturePolicyOut,
+    ProcessPlanCreate,
+    ProcessPlanOut,
+    SavedToolCreate,
+    SavedToolOut,
+    ToolCatalogItemOut,
+    UsageConsume,
+    UsageDecision,
+    UserFeatureOverrideCreate,
+    UserFeatureOverrideOut,
 )
 from app.seed import seed_database
+from app.usage_limits import consume_feature, ensure_default_policies
 
 
 @asynccontextmanager
@@ -46,13 +66,14 @@ async def lifespan(_: FastAPI):
     await init_db()
     async with SessionLocal() as session:
         await seed_database(session)
+        await ensure_default_policies(session)
     yield
 
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.2.1",
-    description="Онлайн-база стоек ЧПУ, станков, операций и API Telegram-бота.",
+    version="1.0.0",
+    description="CNC Master Cloud FULL PRO: база стоек, инструментов, лимитов, операций и Telegram API.",
     lifespan=lifespan,
 )
 
@@ -427,6 +448,10 @@ async def admin_stats(
         users=await count(User),
         machine_profiles=await count(MachineProfile),
         operations=await count(MachiningOperation),
+        catalog_items=catalog_count() + await count(CustomToolItem),
+        policies=await count(FeaturePolicy),
+        saved_tools=await count(SavedTool),
+        process_plans=await count(ProcessPlan),
     )
 
 
@@ -535,3 +560,262 @@ async def admin_create_material(
     await session.commit()
     await session.refresh(item)
     return item
+
+
+@app.get("/api/v1/tools/categories", tags=["tools"])
+async def tool_categories() -> dict:
+    return {"count": catalog_count(), "categories": CATEGORY_LABELS}
+
+
+@app.get(
+    "/api/v1/tools",
+    response_model=list[ToolCatalogItemOut],
+    tags=["tools"],
+)
+async def list_tools(
+    category: str | None = None,
+    operation: str | None = None,
+    iso_group: str | None = None,
+    q: str | None = None,
+    page: int = Query(default=0, ge=0),
+    limit: int = Query(default=10, ge=1, le=50),
+    session: AsyncSession = Depends(get_session),
+) -> list[dict]:
+    items = [item.to_dict() for item in search_catalog(
+        category=category, operation=operation, iso_group=iso_group, query=q
+    )]
+    custom_stmt = select(CustomToolItem).where(CustomToolItem.active.is_(True))
+    if category:
+        custom_stmt = custom_stmt.where(CustomToolItem.category == category)
+    custom = list(await session.scalars(custom_stmt.order_by(CustomToolItem.name)))
+    for item in custom:
+        payload = {
+            "key": item.key, "category": item.category, "subcategory": item.subcategory,
+            "name": item.name, "code": item.code,
+            "operation_tags": item.operation_tags or [], "iso_groups": item.iso_groups or [],
+            "dimensions": item.dimensions, "description": item.description,
+            "compatibility": item.compatibility, "grade_hint": item.grade_hint,
+            "source": item.source,
+        }
+        if operation and operation not in payload["operation_tags"]:
+            continue
+        if iso_group and iso_group.upper() not in payload["iso_groups"]:
+            continue
+        if q and q.casefold() not in (payload["name"] + " " + payload["code"] + " " + payload["description"]).casefold():
+            continue
+        items.append(payload)
+    start = page * limit
+    return items[start:start + limit]
+
+
+@app.get("/api/v1/tools/{tool_key}", response_model=ToolCatalogItemOut, tags=["tools"])
+async def get_tool(tool_key: str, session: AsyncSession = Depends(get_session)) -> dict:
+    item = get_item(tool_key)
+    if item:
+        return item.to_dict()
+    custom = await session.scalar(
+        select(CustomToolItem).where(CustomToolItem.key == tool_key.upper(), CustomToolItem.active.is_(True))
+    )
+    if custom is None:
+        raise HTTPException(status_code=404, detail="Tool not found")
+    return {
+        "key": custom.key, "category": custom.category, "subcategory": custom.subcategory,
+        "name": custom.name, "code": custom.code,
+        "operation_tags": custom.operation_tags or [], "iso_groups": custom.iso_groups or [],
+        "dimensions": custom.dimensions, "description": custom.description,
+        "compatibility": custom.compatibility, "grade_hint": custom.grade_hint,
+        "source": custom.source,
+    }
+
+
+@app.post("/api/v1/saved-tools", response_model=SavedToolOut, tags=["tools"])
+async def save_tool(payload: SavedToolCreate, session: AsyncSession = Depends(get_session)) -> SavedTool:
+    user = await session.scalar(select(User).where(User.telegram_id == payload.telegram_id))
+    machine = await session.scalar(
+        select(MachineProfile).where(MachineProfile.id == payload.machine_id)
+    )
+    if user is None or machine is None or machine.user_id != user.id:
+        raise HTTPException(status_code=404, detail="User or machine not found")
+    item = await session.scalar(select(SavedTool).where(
+        SavedTool.user_id == user.id,
+        SavedTool.machine_profile_id == payload.machine_id,
+        SavedTool.tool_key == payload.tool_key,
+    ))
+    if item is None:
+        item = SavedTool(
+            user_id=user.id, machine_profile_id=payload.machine_id,
+            tool_key=payload.tool_key, tool_snapshot=payload.tool_snapshot,
+        )
+        session.add(item)
+    else:
+        item.tool_snapshot = payload.tool_snapshot
+    await session.commit()
+    await session.refresh(item)
+    return item
+
+
+@app.get(
+    "/api/v1/users/{telegram_id}/machines/{machine_id}/saved-tools",
+    response_model=list[SavedToolOut], tags=["tools"],
+)
+async def saved_tools(
+    telegram_id: int, machine_id: int, session: AsyncSession = Depends(get_session)
+) -> list[SavedTool]:
+    user = await session.scalar(select(User).where(User.telegram_id == telegram_id))
+    if user is None:
+        return []
+    result = await session.scalars(select(SavedTool).where(
+        SavedTool.user_id == user.id, SavedTool.machine_profile_id == machine_id
+    ).order_by(SavedTool.created_at.desc()))
+    return list(result)
+
+
+@app.post("/api/v1/process-plans", response_model=ProcessPlanOut, tags=["operations"])
+async def create_process_plan(
+    payload: ProcessPlanCreate, session: AsyncSession = Depends(get_session)
+) -> ProcessPlan:
+    user = await session.scalar(select(User).where(User.telegram_id == payload.telegram_id))
+    machine = await session.get(MachineProfile, payload.machine_id)
+    if user is None or machine is None or machine.user_id != user.id:
+        raise HTTPException(status_code=404, detail="User or machine not found")
+    item = ProcessPlan(
+        user_id=user.id, machine_profile_id=payload.machine_id,
+        title=payload.title, material_code=payload.material_code,
+        operations=payload.operations,
+    )
+    session.add(item)
+    await session.commit()
+    await session.refresh(item)
+    return item
+
+
+@app.get(
+    "/api/v1/users/{telegram_id}/machines/{machine_id}/process-plans",
+    response_model=list[ProcessPlanOut], tags=["operations"],
+)
+async def list_process_plans(
+    telegram_id: int, machine_id: int, session: AsyncSession = Depends(get_session)
+) -> list[ProcessPlan]:
+    user = await session.scalar(select(User).where(User.telegram_id == telegram_id))
+    if user is None:
+        return []
+    result = await session.scalars(select(ProcessPlan).where(
+        ProcessPlan.user_id == user.id, ProcessPlan.machine_profile_id == machine_id
+    ).order_by(ProcessPlan.created_at.desc()))
+    return list(result)
+
+
+@app.post("/api/v1/usage/consume", response_model=UsageDecision, tags=["usage"])
+async def usage_consume(
+    payload: UsageConsume, session: AsyncSession = Depends(get_session)
+) -> dict:
+    return await consume_feature(
+        session,
+        telegram_id=payload.telegram_id,
+        feature_key=payload.feature_key,
+        consume=payload.consume,
+    )
+
+
+@app.get(
+    "/api/v1/admin/policies",
+    response_model=list[FeaturePolicyOut],
+    dependencies=[Depends(require_admin)], tags=["admin"],
+)
+async def admin_policies(session: AsyncSession = Depends(get_session)) -> list[FeaturePolicy]:
+    result = await session.scalars(select(FeaturePolicy).order_by(FeaturePolicy.title))
+    return list(result)
+
+
+@app.put(
+    "/api/v1/admin/policies/{feature_key}",
+    response_model=FeaturePolicyOut,
+    dependencies=[Depends(require_admin)], tags=["admin"],
+)
+async def admin_update_policy(
+    feature_key: str, payload: FeaturePolicyBase, session: AsyncSession = Depends(get_session)
+) -> FeaturePolicy:
+    item = await session.scalar(select(FeaturePolicy).where(FeaturePolicy.feature_key == feature_key))
+    values = payload.model_dump()
+    values["feature_key"] = feature_key
+    if item is None:
+        item = FeaturePolicy(**values)
+        session.add(item)
+    else:
+        for field, value in values.items():
+            setattr(item, field, value)
+    await session.commit()
+    await session.refresh(item)
+    return item
+
+
+@app.get(
+    "/api/v1/admin/users", response_model=list[AdminUserOut],
+    dependencies=[Depends(require_admin)], tags=["admin"],
+)
+async def admin_users(
+    q: str | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+    session: AsyncSession = Depends(get_session),
+) -> list[User]:
+    stmt = select(User).order_by(User.created_at.desc()).limit(limit)
+    if q:
+        contains = f"%{q}%"
+        stmt = stmt.where(or_(User.full_name.ilike(contains), User.username.ilike(contains)))
+    return list(await session.scalars(stmt))
+
+
+@app.post(
+    "/api/v1/admin/user-overrides",
+    response_model=UserFeatureOverrideOut,
+    dependencies=[Depends(require_admin)], tags=["admin"],
+)
+async def admin_user_override(
+    payload: UserFeatureOverrideCreate, session: AsyncSession = Depends(get_session)
+) -> UserFeatureOverride:
+    user = await session.scalar(select(User).where(User.telegram_id == payload.telegram_id))
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    item = await session.scalar(select(UserFeatureOverride).where(
+        UserFeatureOverride.user_id == user.id,
+        UserFeatureOverride.feature_key == payload.feature_key,
+    ))
+    values = payload.model_dump(exclude={"telegram_id"})
+    if item is None:
+        item = UserFeatureOverride(user_id=user.id, **values)
+        session.add(item)
+    else:
+        for field, value in values.items():
+            setattr(item, field, value)
+    await session.commit()
+    await session.refresh(item)
+    return item
+
+
+@app.post(
+    "/api/v1/admin/tools", response_model=ToolCatalogItemOut,
+    dependencies=[Depends(require_admin)], tags=["admin"],
+)
+async def admin_create_tool(
+    payload: CustomToolItemCreate, session: AsyncSession = Depends(get_session)
+) -> dict:
+    if get_item(payload.key):
+        raise HTTPException(status_code=409, detail="Key conflicts with built-in catalog")
+    item = await session.scalar(select(CustomToolItem).where(CustomToolItem.key == payload.key.upper()))
+    values = payload.model_dump()
+    values["key"] = values["key"].upper()
+    if item is None:
+        item = CustomToolItem(**values)
+        session.add(item)
+    else:
+        for field, value in values.items():
+            setattr(item, field, value)
+    await session.commit()
+    return {
+        "key": item.key, "category": item.category, "subcategory": item.subcategory,
+        "name": item.name, "code": item.code,
+        "operation_tags": item.operation_tags or [], "iso_groups": item.iso_groups or [],
+        "dimensions": item.dimensions, "description": item.description,
+        "compatibility": item.compatibility, "grade_hint": item.grade_hint,
+        "source": item.source,
+    }

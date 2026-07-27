@@ -194,3 +194,105 @@ class MachiningOperation(Base):
     )
 
     machine: Mapped[MachineProfile] = relationship(back_populates="operations")
+
+
+class FeaturePolicy(Base):
+    __tablename__ = "feature_policies"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    feature_key: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    title: Mapped[str] = mapped_column(String(160))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    limit_per_hour: Mapped[int | None] = mapped_column(nullable=True)
+    allowed_start_hour: Mapped[int | None] = mapped_column(nullable=True)
+    allowed_end_hour: Mapped[int | None] = mapped_column(nullable=True)
+    timezone: Mapped[str] = mapped_column(String(80), default="Europe/Kyiv")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class UserFeatureOverride(Base):
+    __tablename__ = "user_feature_overrides"
+    __table_args__ = (
+        UniqueConstraint("user_id", "feature_key", name="uq_user_feature_override"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    feature_key: Mapped[str] = mapped_column(String(80), index=True)
+    enabled: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    limit_per_hour: Mapped[int | None] = mapped_column(nullable=True)
+    allowed_start_hour: Mapped[int | None] = mapped_column(nullable=True)
+    allowed_end_hour: Mapped[int | None] = mapped_column(nullable=True)
+    unlimited: Mapped[bool] = mapped_column(Boolean, default=False)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class FeatureUsage(Base):
+    __tablename__ = "feature_usage"
+    __table_args__ = (
+        UniqueConstraint("user_id", "feature_key", "bucket_start", name="uq_usage_hour_bucket"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    feature_key: Mapped[str] = mapped_column(String(80), index=True)
+    bucket_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    count: Mapped[int] = mapped_column(default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class CustomToolItem(Base):
+    __tablename__ = "custom_tool_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    category: Mapped[str] = mapped_column(String(40), index=True)
+    subcategory: Mapped[str] = mapped_column(String(80), default="custom")
+    name: Mapped[str] = mapped_column(String(250), index=True)
+    code: Mapped[str] = mapped_column(String(160), index=True)
+    operation_tags: Mapped[list[str]] = mapped_column(JSON, default=list)
+    iso_groups: Mapped[list[str]] = mapped_column(JSON, default=list)
+    dimensions: Mapped[str] = mapped_column(Text, default="")
+    description: Mapped[str] = mapped_column(Text, default="")
+    compatibility: Mapped[str] = mapped_column(Text, default="")
+    grade_hint: Mapped[str] = mapped_column(Text, default="")
+    source: Mapped[str] = mapped_column(Text, default="Добавлено администратором")
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class SavedTool(Base):
+    __tablename__ = "saved_tools"
+    __table_args__ = (
+        UniqueConstraint("user_id", "machine_profile_id", "tool_key", name="uq_saved_tool"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    machine_profile_id: Mapped[int] = mapped_column(
+        ForeignKey("machine_profiles.id", ondelete="CASCADE"), index=True
+    )
+    tool_key: Mapped[str] = mapped_column(String(40), index=True)
+    tool_snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ProcessPlan(Base):
+    __tablename__ = "process_plans"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    machine_profile_id: Mapped[int] = mapped_column(
+        ForeignKey("machine_profiles.id", ondelete="CASCADE"), index=True
+    )
+    title: Mapped[str] = mapped_column(String(250))
+    material_code: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    operations: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
