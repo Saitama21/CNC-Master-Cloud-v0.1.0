@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import (
     BigInteger,
@@ -167,3 +168,29 @@ class MachineProfile(Base):
     controller: Mapped[ControllerModel] = relationship(
         back_populates="machine_profiles",
     )
+    operations: Mapped[list[MachiningOperation]] = relationship(
+        back_populates="machine",
+        cascade="all, delete-orphan",
+    )
+
+
+class MachiningOperation(Base):
+    __tablename__ = "machining_operations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    machine_profile_id: Mapped[int] = mapped_column(
+        ForeignKey("machine_profiles.id", ondelete="CASCADE"),
+        index=True,
+    )
+    operation_type: Mapped[str] = mapped_column(String(60), index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    material_code: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    details: Mapped[str] = mapped_column(Text)
+    parameters: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        index=True,
+    )
+
+    machine: Mapped[MachineProfile] = relationship(back_populates="operations")

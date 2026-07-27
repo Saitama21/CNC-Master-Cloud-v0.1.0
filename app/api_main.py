@@ -15,6 +15,7 @@ from app.models import (
     CNCCode,
     ControllerModel,
     MachineProfile,
+    MachiningOperation,
     Manufacturer,
     Material,
     User,
@@ -28,6 +29,8 @@ from app.schemas import (
     ControllerOut,
     MachineProfileCreate,
     MachineProfileOut,
+    MachiningOperationCreate,
+    MachiningOperationOut,
     ManufacturerCreate,
     ManufacturerOut,
     MaterialCreate,
@@ -48,8 +51,8 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.1.0",
-    description="Онлайн-база стоек ЧПУ и API Telegram-бота.",
+    version="0.2.0",
+    description="Онлайн-база стоек ЧПУ, станков, операций и API Telegram-бота.",
     lifespan=lifespan,
 )
 
@@ -275,6 +278,114 @@ async def create_machine(
     )
 
 
+
+@app.get(
+    "/api/v1/users/{telegram_id}/machines/{machine_id}",
+    response_model=MachineProfileOut,
+    tags=["machines"],
+)
+async def get_user_machine(
+    telegram_id: int,
+    machine_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> MachineProfile:
+    item = await session.scalar(
+        select(MachineProfile)
+        .join(User)
+        .options(
+            selectinload(MachineProfile.controller)
+            .selectinload(ControllerModel.manufacturer)
+        )
+        .where(
+            MachineProfile.id == machine_id,
+            User.telegram_id == telegram_id,
+        )
+    )
+    if item is None:
+        raise HTTPException(status_code=404, detail="Machine not found")
+    return item
+
+
+@app.get(
+    "/api/v1/users/{telegram_id}/machines/{machine_id}/operations",
+    response_model=list[MachiningOperationOut],
+    tags=["operations"],
+)
+async def list_operations(
+    telegram_id: int,
+    machine_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> list[MachiningOperation]:
+    machine = await session.scalar(
+        select(MachineProfile)
+        .join(User)
+        .where(
+            MachineProfile.id == machine_id,
+            User.telegram_id == telegram_id,
+        )
+    )
+    if machine is None:
+        raise HTTPException(status_code=404, detail="Machine not found")
+    result = await session.scalars(
+        select(MachiningOperation)
+        .where(MachiningOperation.machine_profile_id == machine_id)
+        .order_by(MachiningOperation.created_at, MachiningOperation.id)
+    )
+    return list(result)
+
+
+@app.post(
+    "/api/v1/operations",
+    response_model=MachiningOperationOut,
+    tags=["operations"],
+)
+async def create_operation(
+    payload: MachiningOperationCreate,
+    session: AsyncSession = Depends(get_session),
+) -> MachiningOperation:
+    machine = await session.scalar(
+        select(MachineProfile)
+        .join(User)
+        .where(
+            MachineProfile.id == payload.machine_id,
+            User.telegram_id == payload.telegram_id,
+        )
+    )
+    if machine is None:
+        raise HTTPException(status_code=404, detail="Machine not found")
+    values = payload.model_dump(exclude={"telegram_id", "machine_id"})
+    item = MachiningOperation(machine_profile_id=payload.machine_id, **values)
+    session.add(item)
+    await session.commit()
+    await session.refresh(item)
+    return item
+
+
+@app.delete(
+    "/api/v1/users/{telegram_id}/operations/{operation_id}",
+    tags=["operations"],
+)
+async def delete_operation(
+    telegram_id: int,
+    operation_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, bool]:
+    item = await session.scalar(
+        select(MachiningOperation)
+        .join(MachineProfile)
+        .join(User)
+        .where(
+            MachiningOperation.id == operation_id,
+            User.telegram_id == telegram_id,
+        )
+    )
+    if item is None:
+        raise HTTPException(status_code=404, detail="Operation not found")
+    await session.delete(item)
+    await session.commit()
+    return {"deleted": True}
+
+
 @app.delete("/api/v1/users/{telegram_id}/machines/{machine_id}", tags=["machines"])
 async def delete_machine(
     telegram_id: int,
@@ -315,6 +426,7 @@ async def admin_stats(
         materials=await count(Material),
         users=await count(User),
         machine_profiles=await count(MachineProfile),
+        operations=await count(MachiningOperation),
     )
 
 

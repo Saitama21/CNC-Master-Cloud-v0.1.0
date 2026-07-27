@@ -1,10 +1,15 @@
 {
   "project": "CNC Master Cloud",
-  "version": "0.1.0",
-  "generated_files": 21,
-  "syntax_check": "passed",
-  "review_fixes": [
-    "Safe deterministic code-search ordering",
-    "API healthcheck before bot startup"
+  "version": "0.2.0",
+  "module": "My Machine",
+  "features": [
+    "machine characteristics",
+    "axis capabilities",
+    "tool family selection",
+    "cutting calculator",
+    "stored operations",
+    "tech process",
+    "G-code static checks",
+    "alarm triage"
   ]
 }

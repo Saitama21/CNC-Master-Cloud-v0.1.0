@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -136,6 +137,28 @@ class MachineProfileOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class MachiningOperationCreate(BaseModel):
+    telegram_id: int
+    machine_id: int
+    operation_type: str = Field(min_length=2, max_length=60)
+    title: str = Field(min_length=2, max_length=200)
+    material_code: str | None = Field(default=None, max_length=60)
+    details: str = Field(min_length=2, max_length=3000)
+    parameters: dict[str, Any] = Field(default_factory=dict)
+
+
+class MachiningOperationOut(BaseModel):
+    id: int
+    machine_profile_id: int
+    operation_type: str
+    title: str
+    material_code: str | None = None
+    details: str
+    parameters: dict[str, Any]
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
 class AdminStats(BaseModel):
     manufacturers: int
     controllers: int
@@ -143,3 +166,4 @@ class AdminStats(BaseModel):
     materials: int
     users: int
     machine_profiles: int
+    operations: int

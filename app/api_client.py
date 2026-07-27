@@ -20,12 +20,7 @@ class CNCAPI:
         if self.session is not None:
             await self.session.close()
 
-    async def request(
-        self,
-        method: str,
-        path: str,
-        **kwargs: Any,
-    ) -> Any:
+    async def request(self, method: str, path: str, **kwargs: Any) -> Any:
         if self.session is None:
             raise CNCAPIError("API client is not started")
         url = f"{self.base_url}{path}"
@@ -53,18 +48,11 @@ class CNCAPI:
     async def manufacturers(self) -> list[dict[str, Any]]:
         return await self.request("GET", "/api/v1/manufacturers")
 
-    async def controllers(
-        self,
-        manufacturer_id: int | None = None,
-    ) -> list[dict[str, Any]]:
+    async def controllers(self, manufacturer_id: int | None = None) -> list[dict[str, Any]]:
         params = {"manufacturer_id": manufacturer_id} if manufacturer_id else None
         return await self.request("GET", "/api/v1/controllers", params=params)
 
-    async def codes(
-        self,
-        query: str,
-        controller_id: int | None = None,
-    ) -> list[dict[str, Any]]:
+    async def codes(self, query: str, controller_id: int | None = None) -> list[dict[str, Any]]:
         params: dict[str, Any] = {"q": query, "limit": 12}
         if controller_id:
             params["controller_id"] = controller_id
@@ -74,10 +62,19 @@ class CNCAPI:
         return await self.request("GET", "/api/v1/materials")
 
     async def machines(self, telegram_id: int) -> list[dict[str, Any]]:
-        return await self.request(
-            "GET",
-            f"/api/v1/users/{telegram_id}/machines",
-        )
+        return await self.request("GET", f"/api/v1/users/{telegram_id}/machines")
+
+    async def machine(self, telegram_id: int, machine_id: int) -> dict[str, Any]:
+        return await self.request("GET", f"/api/v1/users/{telegram_id}/machines/{machine_id}")
 
     async def create_machine(self, payload: dict[str, Any]) -> dict[str, Any]:
         return await self.request("POST", "/api/v1/machines", json=payload)
+
+    async def operations(self, telegram_id: int, machine_id: int) -> list[dict[str, Any]]:
+        return await self.request(
+            "GET",
+            f"/api/v1/users/{telegram_id}/machines/{machine_id}/operations",
+        )
+
+    async def create_operation(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self.request("POST", "/api/v1/operations", json=payload)
