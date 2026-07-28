@@ -1,21 +1,27 @@
 {
-  "project": "CNC Master Cloud ENGINEERING CLIENT",
-  "version": "2.1.0",
-  "creator": "Єрошов Іван",
-  "catalog_items": 1067,
-  "features": [
-    "interactive X/Z contour editor",
-    "PDF page rendering and semi-automatic contour candidate",
-    "manual dimension calibration and X0/Z0 origin",
-    "actual stock versus final contour overlay",
-    "multi-operation tool plan and ready tool catalog",
-    "ShopTurn Stock Removal field cards",
-    "tool-by-tool instructions",
-    "project G-code and MPF export",
-    "saved engineering projects",
-    "hourly admin limits for client, PDF scan, and G-code generation",
-    "machine digital passport loaded from Telegram profile",
-    "15-station turret editor with driven-tool flags",
-    "chuck, axes and Renishaw setup saved with engineering projects"
-  ]
+  "version": "2.1.2",
+  "release": "PDF safe-region autocontour",
+  "tests_passed": 22,
+  "files": {
+    "app/cnc_client.py": {
+      "sha256": "787fb37a3a8f18d15d7b89b591f19f274fe395b597f4fb836ce449fa03da4949",
+      "bytes": 26068
+    },
+    "app/client_ui.py": {
+      "sha256": "6fa15a1bc229a5f61c4149fb5396cbc3724f6cb7dea78eb447f3268450438b3d",
+      "bytes": 40755
+    },
+    "app/api_main.py": {
+      "sha256": "1501c60bfc64df810ec4a5ec9a0323fe0ee01c244d899878263f45d1cd5229a3",
+      "bytes": 31351
+    },
+    "UPDATE_v2.1.2.txt": {
+      "sha256": "6eaca7990febff9baeb4ce762a393e949a55af8f13fb4d0835c31566b6e01365",
+      "bytes": 1608
+    },
+    "tests/test_pdf_region.py": {
+      "sha256": "94211ccf246b7aa4152dd3a241615a466817b658557bb6ab5fdf0f0c335a83dd",
+      "bytes": 337
+    }
+  }
 }

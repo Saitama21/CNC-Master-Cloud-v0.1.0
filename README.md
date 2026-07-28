@@ -1,4 +1,4 @@
-# ⚙️ CNC Master Cloud ENGINEERING CLIENT v2.1.0
+# ⚙️ CNC Master Cloud ENGINEERING CLIENT v2.1.2
 
 Telegram-платформа для операторов, наладчиков и технологов ЧПУ.
 

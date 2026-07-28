@@ -135,6 +135,12 @@ async def client_analyze_pdf(
     file: UploadFile = File(...),
     page_number: int = Form(default=1),
     telegram_id: int = Form(default=0),
+    crop_x: float | None = Form(default=None),
+    crop_y: float | None = Form(default=None),
+    crop_w: float | None = Form(default=None),
+    crop_h: float | None = Form(default=None),
+    rotation: int = Form(default=0),
+    profile_type: str = Form(default="outer"),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     await _require_feature(session, telegram_id, "pdf_scan")
@@ -142,7 +148,10 @@ async def client_analyze_pdf(
         raise HTTPException(status_code=415, detail="Загрузите PDF-файл.")
     data = await file.read()
     try:
-        return analyze_pdf_bytes(data, page_number)
+        crop = None
+        if None not in {crop_x, crop_y, crop_w, crop_h}:
+            crop = (float(crop_x), float(crop_y), float(crop_w), float(crop_h))
+        return analyze_pdf_bytes(data, page_number, crop=crop, rotation=rotation, profile_type=profile_type)
     except ClientValidationError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

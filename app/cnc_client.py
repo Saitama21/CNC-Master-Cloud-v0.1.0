@@ -396,7 +396,13 @@ def generate_engineering_plan(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def analyze_pdf_bytes(data: bytes, page_number: int = 1) -> dict[str, Any]:
+def analyze_pdf_bytes(
+    data: bytes,
+    page_number: int = 1,
+    crop: tuple[float, float, float, float] | None = None,
+    rotation: int = 0,
+    profile_type: str = "outer",
+) -> dict[str, Any]:
     if not data:
         raise ClientValidationError("PDF-файл пустой.")
     if len(data) > 20 * 1024 * 1024:
@@ -414,8 +420,23 @@ def analyze_pdf_bytes(data: bytes, page_number: int = 1) -> dict[str, Any]:
         raise ClientValidationError("В PDF нет страниц.")
     page_index = min(max(0, page_number - 1), document.page_count - 1)
     page = document.load_page(page_index)
+    rotation = int(rotation or 0) % 360
+    if rotation not in {0, 90, 180, 270}:
+        rotation = 0
     zoom = 2.2
-    pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), alpha=False)
+    matrix = fitz.Matrix(zoom, zoom).prerotate(rotation)
+    clip = None
+    if crop:
+        x, y, w, h = crop
+        if w > 0.01 and h > 0.01:
+            rect = page.rect
+            x0 = max(0.0, min(1.0, x)) * rect.width
+            y0 = max(0.0, min(1.0, y)) * rect.height
+            x1 = max(0.0, min(1.0, x + w)) * rect.width
+            y1 = max(0.0, min(1.0, y + h)) * rect.height
+            if x1 - x0 > rect.width * 0.02 and y1 - y0 > rect.height * 0.02:
+                clip = fitz.Rect(x0, y0, x1, y1)
+    pix = page.get_pixmap(matrix=matrix, clip=clip, alpha=False)
     png = pix.tobytes("png")
     text = page.get_text("text") or ""
     dimensions = sorted(set(re.findall(r"(?<!\d)(\d{1,4}(?:[.,]\d{1,3})?)(?:\s*(?:mm|мм))?", text, flags=re.I)))[:80]
@@ -446,7 +467,11 @@ def analyze_pdf_bytes(data: bytes, page_number: int = 1) -> dict[str, Any]:
                     continue
                 if w > width * 0.97 and h > height * 0.97:
                     continue
-                if aspect < 2.2:
+                if aspect < 1.6:
+                    continue
+                # Exclude nearly circular / square front views even inside a crop.
+                circularity = (4.0 * 3.141592653589793 * area / (perimeter * perimeter)) if perimeter > 0 else 0.0
+                if aspect < 2.0 and circularity > 0.45:
                     continue
 
                 top_bonus = 2.0 if center_y < height * 0.48 else 0.4
@@ -505,7 +530,23 @@ def analyze_pdf_bytes(data: bytes, page_number: int = 1) -> dict[str, Any]:
                         clean.append(simplified[-1])
 
                 candidate = [{"px": round(px, 2), "py": round(py, 2)} for px, py in clean]
-                confidence = "high" if len(candidate) >= 3 else "low"
+                # Reject implausible zig-zags and profiles that do not span the selected view.
+                if len(candidate) >= 3:
+                    xs = [p["px"] for p in candidate]
+                    ys = [p["py"] for p in candidate]
+                    x_span = max(xs) - min(xs)
+                    y_span = max(ys) - min(ys)
+                    monotonic = all(xs[i] <= xs[i + 1] + 1.5 for i in range(len(xs) - 1))
+                    jump_limit = max(8.0, y_span * 0.8)
+                    huge_jumps = sum(abs(ys[i + 1] - ys[i]) > jump_limit for i in range(len(ys) - 1))
+                    if x_span < width * 0.18 or not monotonic or huge_jumps > 1:
+                        candidate = []
+                        confidence = "low"
+                    else:
+                        confidence = "high" if crop else "medium"
+                else:
+                    candidate = []
+                    confidence = "low"
     except Exception:
         # The manual tracing path remains available even if OpenCV cannot parse the drawing.
         candidate = []
@@ -521,6 +562,9 @@ def analyze_pdf_bytes(data: bytes, page_number: int = 1) -> dict[str, Any]:
         "dimension_hints": dimensions,
         "candidate_pixels": candidate,
         "candidate_confidence": confidence,
+        "crop_applied": bool(crop),
+        "rotation": rotation,
+        "profile_type": profile_type,
         "warnings": [
             "Автоконтур является подсказкой, а не измерительным результатом.",
             "Обязательно задайте масштаб по известному размеру и вручную проверьте все точки.",
