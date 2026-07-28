@@ -14,18 +14,52 @@ header{display:flex;gap:16px;align-items:center;padding:14px 18px;background:#0d
 .ops{display:grid;gap:8px}.op{border:1px solid var(--line);border-radius:10px;background:var(--panel2);padding:9px}.opHead{display:flex;align-items:center;gap:7px;margin-bottom:8px}.opHead strong{flex:1}.opGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.opGrid input{width:100%;padding:7px}.small{font-size:12px}.toolResult{padding:8px;background:#0b151e;border-radius:8px;margin-top:7px;color:#c6d7e5;min-height:34px}
 .tabs{display:flex;gap:4px;padding:8px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:2}.tabs button{padding:7px 9px}.tabs button.active{background:#194f78}.tab{display:none;padding:12px}.tab.active{display:block}.resultCard{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:9px;background:#0d1821}.resultCard h3{font-size:14px;margin:0 0 8px}.kv{display:grid;grid-template-columns:1fr auto;gap:5px 10px}.kv div:nth-child(odd){color:var(--muted)}pre{white-space:pre-wrap;word-break:break-word;background:#050b10;border:1px solid var(--line);border-radius:10px;padding:10px;max-height:58vh;overflow:auto}ol{padding-left:22px}.warn{border-left:3px solid var(--warn);padding:8px 10px;background:#2a2415;margin:7px 0}.ok{border-left:3px solid var(--ok);padding:8px 10px;background:#12271e;margin:7px 0}
 .modal{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;z-index:50}.modal.open{display:flex}.modalBox{width:min(900px,94vw);max-height:88vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}.toolList{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}.toolItem{border:1px solid var(--line);border-radius:9px;padding:9px;cursor:pointer}.toolItem:hover{border-color:var(--accent)}
+.guideGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.guideStep{border:1px solid var(--line);border-radius:11px;padding:11px;background:#0b1720}.guideStep.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}.guideStep .num{display:inline-grid;place-items:center;width:25px;height:25px;border-radius:50%;background:#194f78;font-weight:700;margin-right:7px}.confidence{display:inline-block;padding:2px 7px;border-radius:999px;background:#29331f;color:#d9f7a5}.dangerBox{border-left:3px solid var(--danger);padding:9px 10px;background:#2a1518;margin:7px 0}@media(max-width:760px){.guideGrid{grid-template-columns:1fr}}
 @media(max-width:1200px){.app{grid-template-columns:300px 1fr}.results{grid-column:1/-1;max-height:600px}.stage{min-height:620px}}@media(max-width:760px){.app{display:block;height:auto}.panel{margin-bottom:10px}.stage{height:580px}.opGrid{grid-template-columns:1fr 1fr}.toolList{grid-template-columns:1fr}}
+
+/* v2.3.0 PRO interface */
+header{min-height:78px;padding:10px 16px;background:linear-gradient(180deg,#0b1721,#08131c)}
+.brandBlock{display:flex;align-items:center;gap:14px;min-width:0}
+.brandPlate{width:176px;height:54px;display:flex;align-items:center;justify-content:center;padding:6px 10px;border:1px solid #3f8ac0;border-radius:9px;background:linear-gradient(145deg,#d7e0e6 0%,#6c7a84 20%,#111b25 52%,#0a1219 100%);box-shadow:inset 0 0 0 1px #ffffff33,0 0 16px #2288d233;overflow:hidden;flex:0 0 auto}
+.brandPlate img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 1px 1px #000)}
+.brandText{display:grid;gap:2px;min-width:0}.brandTitle{font-size:19px;font-weight:750;line-height:1.05;white-space:nowrap}.brandSub{font-size:15px;font-weight:650;white-space:nowrap}
+.productMeta{display:flex;align-items:center;gap:12px;padding-left:4px;border-left:1px solid var(--line)}
+.headerActions{display:flex;gap:8px}.headerActions button{min-height:48px;padding-inline:16px}
+.app{grid-template-columns:minmax(360px,410px) minmax(560px,1fr) minmax(390px,470px);height:calc(100vh - 78px)}
+.panel{scrollbar-color:#456075 #0b151e;scrollbar-width:thin}
+.contourSection{display:flex;flex-direction:column;min-height:310px}
+.contourHeader{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.contourHeader h2{margin:0}.contourStats{font-size:11px;color:#b6c9d8;display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.statPill{border:1px solid var(--line);border-radius:999px;padding:2px 7px;background:#0a151e}
+.contourTableWrap{border:1px solid var(--line);border-radius:10px;overflow:auto;background:#07121a;min-height:214px;max-height:min(62vh,780px);transition:height .15s ease}
+.contourTable{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:12px}
+.contourTable th{position:sticky;top:0;z-index:2;background:#132534;color:#c9d9e5;text-align:left;border-bottom:1px solid var(--line);padding:7px 8px}
+.contourTable td{padding:5px 8px;border-bottom:1px solid #1e3443;white-space:nowrap}.contourTable tr:hover td{background:#102330}
+.contourTable input{width:88px;padding:4px 5px;border-radius:5px;background:#08131c}.contourTable select{padding:4px 5px;border-radius:5px;min-width:112px}
+.contourRaw{display:none}
+.contourActions{margin-top:8px}
+.moduleStrip{display:flex;gap:5px;padding:7px 10px;border-bottom:1px solid var(--line);background:#0a151e;overflow:auto;position:sticky;top:0;z-index:3}
+.moduleStrip button{white-space:nowrap;padding:6px 9px}.moduleStrip button.active{background:#174f7d;border-color:#4da8ef}
+.guideGrid{grid-template-columns:1fr}.guideStep{display:grid;grid-template-columns:auto 1fr;column-gap:8px}.guideStep .small{grid-column:2}
+@media(max-width:1450px){.app{grid-template-columns:360px minmax(520px,1fr)}.results{grid-column:1/-1;max-height:none}.brandPlate{width:150px}}
+@media(max-width:850px){header{position:relative;flex-wrap:wrap}.productMeta{border-left:0;padding-left:0}.brandPlate{width:142px;height:48px}.brandTitle{font-size:17px}.brandSub{font-size:13px}.headerActions{width:100%}.headerActions button{flex:1}.app{display:block;height:auto}.contourTableWrap{max-height:70vh}.stage{height:600px}}
+
 </style>
 </head>
 <body>
 <header>
-  <h1>⚙️ CNC Master Cloud — Engineering Client</h1><span class="badge">v2.2.0</span>
-  <span class="muted">Инженерная геометрия · PDF · Stock Removal · G-код</span><span class="spacer"></span>
-  <button id="loadProjects">📂 Проекты</button><button id="saveBtn">💾 Сохранить</button><button id="generateBtn" class="primary">▶ Рассчитать</button>
+  <div class="brandBlock">
+    <div class="brandPlate" title="ROZFOOD"><img alt="ROZFOOD" src="data:image/webp;base64,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"></div>
+    <div class="brandText"><div class="brandTitle">CNC Master Cloud</div><div class="brandSub">— Engineering Client</div></div>
+  </div>
+  <div class="productMeta"><span class="badge">v2.3.0 PRO</span><span class="muted">PDF · Геометрия · Stock Removal · G-код</span></div>
+  <span class="spacer"></span>
+  <div class="headerActions"><button id="loadProjects">📂 Проекты</button><button id="saveBtn">💾 Сохранить</button><button id="generateBtn" class="primary">▶ Рассчитать</button></div>
 </header>
 <div class="app">
 <aside class="panel">
-  <div class="section"><h2>📁 Проект</h2>
+  <div class="moduleStrip"><button data-jump="project" class="active">Проект</button><button data-jump="pdf">PDF</button><button data-jump="geometry">Геометрия</button><button data-jump="contour">Контур</button><button data-jump="operations">Операции</button></div>
+  <div class="section" id="module-project"><h2>📁 Проект</h2>
     <div class="field"><label>Название</label><input id="title" value="Деталь из PDF"></div>
     <div class="grid2" style="margin-top:8px"><div class="field"><label>Telegram ID</label><input id="telegramId" inputmode="numeric"></div><div class="field"><label>ID станка</label><input id="machineId" inputmode="numeric"></div></div>
     <div class="field" style="margin-top:8px"><label>Стойка</label><select id="controller"><option>Siemens SINUMERIK 828D</option><option>Siemens SINUMERIK 840D</option><option>Fanuc 0i-TF</option><option>Haas NGC</option><option>Generic ISO</option></select></div>
@@ -44,19 +78,28 @@ header{display:flex;gap:16px;align-items:center;padding:14px 18px;background:#0d
     <div class="field"><label>Система координат и назначение контура</label><select id="workMode"><option value="turn">Токарный профиль X/Z</option><option value="mill">Фрезерный контур X/Y</option><option value="manual">Ручной универсальный</option></select></div>
     <div id="workModeInfo" class="small ok" style="margin-top:8px">Токарный режим: нужен продольный вид или разрез детали.</div>
   </div>
-  <div class="section"><h2>📄 Чертёж PDF</h2>
+  <div class="section" id="module-pdf"><h2>📄 Чертёж PDF</h2>
     <div class="field"><input id="pdfFile" type="file" accept="application/pdf"></div>
     <div class="row" style="margin-top:7px"><input id="pdfPage" type="number" min="1" value="1" style="width:75px"><button id="uploadPdf">Загрузить страницу</button></div>
     <div class="row" style="margin-top:7px"><select id="profileType"><option value="outer">Наружный профиль</option><option value="inner">Внутренний профиль</option><option value="free">Произвольный контур</option></select><button id="selectRegion">▭ Выбрать область</button><button id="reanalyzeRegion">✨ Распознать область</button></div>
     <div class="row" style="margin-top:7px"><button id="rotatePdf">↻ Повернуть 90°</button><button id="clearRegion">Сбросить область</button></div>
     <div id="pdfInfo" class="small muted" style="margin-top:7px">PDF не загружен.</div>
   </div>
-  <div class="section"><h2>🧠 Инженерная геометрия (Beta)</h2>
+  <div class="section" id="module-geometry"><h2>🧠 Инженерная геометрия (Beta)</h2>
     <div class="field"><label>Шаблон</label><select id="geometryTemplate"><option value="tooth_section">Симметричный профиль зуба / кармана</option><option value="none">Без шаблона</option></select></div>
-    <div class="grid2" style="margin-top:8px"><div class="field"><label>Общая ширина, мм</label><input id="geoWidth" type="number" step="0.01" value="42"></div><div class="field"><label>Нижняя площадка, мм</label><input id="geoFlat" type="number" step="0.01" value="30"></div></div>
-    <div class="grid3" style="margin-top:8px"><div class="field"><label>Высота, мм</label><input id="geoHeight" type="number" step="0.01" value="10"></div><div class="field"><label>Радиус R, мм</label><input id="geoRadius" type="number" step="0.01" value="4"></div><div class="field"><label>Угол, °</label><input id="geoAngle" type="number" step="0.1" value="120"></div></div>
-    <div class="row" style="margin-top:8px"><button id="buildGeometry" class="good">Построить по размерам</button><button id="clearGeometry">Сбросить</button></div>
-    <div id="geometryInfo" class="small muted" style="margin-top:7px">Контур строится из размеров, а не из случайных пикселей.</div>
+    <div class="row" style="margin-top:8px"><button id="recognizeDimensions">✨ Распознать размеры из PDF</button><span id="recognitionBadge" class="confidence" style="display:none"></span></div>
+    <div class="grid2" style="margin-top:8px"><div class="field"><label>Общая ширина, мм</label><input id="geoWidth" type="number" step="0.01" placeholder="из PDF"></div><div class="field"><label>Нижняя площадка, мм</label><input id="geoFlat" type="number" step="0.01" placeholder="из PDF"></div></div>
+    <div class="grid3" style="margin-top:8px"><div class="field"><label>Высота, мм</label><input id="geoHeight" type="number" step="0.01" placeholder="из PDF"></div><div class="field"><label>Радиус R, мм</label><input id="geoRadius" type="number" step="0.01" placeholder="из PDF"></div><div class="field"><label>Угол, °</label><input id="geoAngle" type="number" step="0.1" placeholder="из PDF"></div></div>
+    <div class="row" style="margin-top:8px"><button id="buildGeometry" class="good">Построить после проверки</button><button id="clearGeometry">Сбросить</button></div>
+    <div id="geometryInfo" class="small muted" style="margin-top:7px">Ассистент заполняет размеры, оператор проверяет и редактирует.</div>
+  </div>
+  <div class="section"><h2>📟 Параметры Stock Removal</h2>
+    <div class="grid2"><div class="field"><label>Ноль Z</label><select id="stockOriginZ"><option value="front">Z0 на торце</option><option value="back">Z0 сзади детали</option></select></div><div class="field"><label>Ввод X</label><select id="stockXMode"><option value="diameter">Диаметрный</option><option value="radius">Радиусный</option></select></div></div>
+    <div class="grid2" style="margin-top:8px"><div class="field"><label>Припуск X, мм</label><input id="allowX" type="number" step="0.01" value="0.3"></div><div class="field"><label>Припуск Z, мм</label><input id="allowZ" type="number" step="0.01" value="0.1"></div></div>
+    <div class="grid2" style="margin-top:8px"><div class="field"><label>Контур</label><select id="contourClosure"><option value="open">Открытый</option><option value="closed">Закрытый</option></select></div><div class="field"><label>Обработка</label><select id="stockKind"><option value="outer">Наружная</option><option value="inner">Внутренняя</option></select></div></div>
+    <label class="small" style="display:block;margin-top:8px"><input id="operatorConfirmed" type="checkbox"> Я проверил размеры, масштаб, X0/Z0 и направление осей</label>
+    <button id="buildStockGuide" class="primary" style="width:100%;margin-top:8px">Показать ввод в SINUMERIK 828D</button>
+    <div id="stockGuideStatus" class="small muted" style="margin-top:7px">Инструкция строится только после подтверждения оператора.</div>
   </div>
   <div class="section"><h2>📐 Масштаб и координаты</h2>
     <div class="field"><label>Известный размер между 2 точками, мм</label><input id="referenceMm" type="number" step="0.001" value="100"></div>
@@ -64,11 +107,14 @@ header{display:flex;gap:16px;align-items:center;padding:14px 18px;background:#0d
     <label class="small"><input id="diameterMode" type="checkbox" checked> Высота от оси — радиус, X пересчитать ×2</label>
     <div id="scaleInfo" class="small muted" style="margin-top:6px">Масштаб не задан.</div>
   </div>
-  <div class="section"><h2>📍 Точки контура X/Z</h2>
-    <textarea id="contourText" rows="6" placeholder="X70 Z0&#10;X70 Z-20&#10;X50 Z-25"></textarea>
-    <div class="row" style="margin-top:7px"><button id="applyContour">Применить точные значения</button><button id="exportContour">Обновить из рисунка</button></div>
+  <div class="section contourSection" id="module-contour"><div class="contourHeader"><h2>📍 Точки контура X/Z</h2><div id="contourStats" class="contourStats"><span class="statPill">Точек: 0</span></div></div>
+    <div id="contourTableWrap" class="contourTableWrap">
+      <table class="contourTable"><thead><tr><th>№</th><th>X</th><th>Z</th><th>Тип элемента</th><th>R / угол</th></tr></thead><tbody id="contourTableBody"><tr><td colspan="5" class="muted">Контур ещё не построен.</td></tr></tbody></table>
+    </div>
+    <textarea id="contourText" class="contourRaw" rows="6" placeholder="X70 Z0&#10;X70 Z-20&#10;X50 Z-25"></textarea>
+    <div class="row contourActions"><button id="addContourRow">＋ Добавить точку</button><button id="applyContour">✓ Применить значения</button><button id="exportContour">↻ Обновить из рисунка</button></div>
   </div>
-  <div class="section"><h2>🧩 Операции</h2>
+  <div class="section" id="module-operations"><h2>🧩 Операции</h2>
     <div class="row">
       <select id="newOp"><option value="turn_rough">Черновое точение</option><option value="turn_finish">Чистовое точение</option><option value="face">Торцевание</option><option value="bore_rough">Черновая расточка</option><option value="bore_finish">Чистовая расточка</option><option value="drill">Сверление</option><option value="groove">Канавка</option><option value="part">Отрезка</option><option value="thread_od">Наружная резьба</option><option value="thread_id">Внутренняя резьба</option><option value="mill">Фрезерование</option></select>
       <button id="addOp">➕</button>
@@ -88,10 +134,17 @@ header{display:flex;gap:16px;align-items:center;padding:14px 18px;background:#0d
 </main>
 
 <section class="panel results">
-  <div class="tabs"><button data-tab="preview" class="active">Графика</button><button data-tab="setup">Станок / револьвер</button><button data-tab="stock">Stock Removal</button><button data-tab="steps">По инструментам</button><button data-tab="gcode">G-код</button></div>
+  <div class="tabs"><button data-tab="preview" class="active">Графика</button><button data-tab="setup">Станок / револьвер</button><button data-tab="stock">Stock Removal</button><button data-tab="controllerGuide">Ввод в стойку</button><button data-tab="steps">По инструментам</button><button data-tab="gcode">G-код</button></div>
   <div id="preview" class="tab active"><div class="muted">Нажмите «Рассчитать», чтобы построить траектории и итоговую форму.</div><canvas id="resultCanvas" width="760" height="520" style="width:100%;margin-top:12px;background:#061018;border:1px solid var(--line);border-radius:10px"></canvas><div id="summary"></div></div>
   <div id="setup" class="tab"><div id="machineSetup"></div><h3>Револьвер на 15 позиций</h3><div id="turretGrid" class="toolList"></div><div class="warn">Проверяйте реальные габариты блоков, вылеты, ориентацию и безопасные позиции на станке.</div></div>
   <div id="stock" class="tab"></div>
+  <div id="controllerGuide" class="tab">
+    <div class="resultCard"><h3>📟 SINUMERIK 828D — Stock Removal</h3><div id="guideMeta" class="muted">Постройте и подтвердите контур.</div></div>
+    <div id="guideWarning" class="dangerBox">Перед запуском обязательно проверьте контур в графической симуляции, без заготовки, с уменьшенным Rapid Override.</div>
+    <div id="guideSteps" class="guideGrid"></div>
+    <div class="row" style="margin-top:10px"><button id="copyGuide">📋 Копировать инструкцию</button><button id="downloadGuide">⬇ Скачать TXT</button></div>
+    <pre id="guideText">Инструкция ещё не построена.</pre>
+  </div>
   <div id="steps" class="tab"></div>
   <div id="gcode" class="tab"><div class="row"><button id="copyGcode">📋 Копировать</button><button id="downloadGcode">⬇ Скачать MPF</button></div><pre id="gcodeText">G-код ещё не рассчитан.</pre></div>
 </section>
@@ -103,8 +156,10 @@ header{display:flex;gap:16px;align-items:center;padding:14px 18px;background:#0d
 <script>
 const OP_LABELS={face:'Торцевание',turn_rough:'Черновое точение',turn_finish:'Чистовое точение',bore_rough:'Черновая расточка',bore_finish:'Чистовая расточка',drill:'Сверление',groove:'Канавка',part:'Отрезка',thread_od:'Наружная резьба',thread_id:'Внутренняя резьба',mill:'Фрезерование'};
 const DEFAULTS={face:[120,.18,1.5],turn_rough:[130,.25,2],turn_finish:[170,.10,.3],bore_rough:[100,.18,1],bore_finish:[140,.08,.25],drill:[70,.12,0],groove:[90,.08,0],part:[75,.06,0],thread_od:[45,1.5,0],thread_id:[35,1.5,0],mill:[120,300,1]};
-const state={workMode:'turn',geometryElements:[],mode:'draw',pdfImage:null,pdfFile:null,pdfVisible:true,pdfCandidate:[],candidateConfidence:'low',cropRect:null,cropStart:null,rotation:0,pointsPx:[],scalePxMm:null,origin:null,calibration:[],operations:[],result:null,view:{scale:1,ox:0,oy:0},activeOp:null,machine:null,turret:Array.from({length:15},(_,i)=>({station:i+1,tool:'',holder:'',insert:'',offset:'D1',live:false}))};
+const state={workMode:'turn',geometryElements:[],recognizedDimensions:null,stockGuide:null,mode:'draw',pdfImage:null,pdfFile:null,pdfVisible:true,pdfCandidate:[],candidateConfidence:'low',cropRect:null,cropStart:null,rotation:0,pointsPx:[],scalePxMm:null,origin:null,calibration:[],operations:[],result:null,view:{scale:1,ox:0,oy:0},activeOp:null,machine:null,turret:Array.from({length:15},(_,i)=>({station:i+1,tool:'',holder:'',insert:'',offset:'D1',live:false}))};
 const $=id=>document.getElementById(id);const canvas=$('canvas'),ctx=canvas.getContext('2d');
+document.querySelectorAll('[data-jump]').forEach(btn=>btn.onclick=()=>{document.querySelectorAll('[data-jump]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const el=$('module-'+btn.dataset.jump);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})});
+
 function resize(){const r=canvas.parentElement.getBoundingClientRect();canvas.width=Math.max(600,Math.floor(r.width*devicePixelRatio));canvas.height=Math.max(420,Math.floor(r.height*devicePixelRatio));ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);draw();}
 addEventListener('resize',resize);setTimeout(resize,0);
 function setMode(mode){state.mode=mode;document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));$('selectRegion').classList.toggle('active',mode==='crop');$('modeStatus').textContent='Режим: '+({draw:'контур',calibrate:'калибровка',origin:'начало координат',crop:'выбор области'}[mode]||mode);}
@@ -112,6 +167,60 @@ document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>setMode(b.data
 function updateWorkMode(){state.workMode=$('workMode').value;const info={turn:'Токарный режим: выделяйте продольный вид или разрез. Круглый вид сверху будет отклонён.',mill:'Фрезерный режим X/Y: подходит для вида сверху, карманов и зубьев. Токарный Stock Removal и MPF отключены.',manual:'Ручной режим: точки задаются пользователем без автоматической классификации.'};$('workModeInfo').textContent=info[state.workMode];$('diameterMode').disabled=state.workMode==='mill';$('generateBtn').textContent=state.workMode==='mill'?'▶ Проверить XY':'▶ Рассчитать';draw()}
 $('workMode').onchange=updateWorkMode;
 function geometryPointsToPixels(points){ensureManualFrame();const px=[];if(state.workMode==='mill'){for(const p of points)px.push({x:state.origin.x+p.x*state.scalePxMm,y:state.origin.y-p.y*state.scalePxMm});}else{for(const p of points){const q=machineToPixel({z:p.x,x:p.y});if(q)px.push(q)}}return px}
+function parseDimensionCandidates(){
+  if(!state.pdfImage)return null;
+  // Локальная beta-эвристика без внешнего ИИ: она не придумывает значения.
+  // Поля заполняются только если пользователь уже ввёл/подтвердил распознанные подписи.
+  const known=['geoWidth','geoFlat','geoHeight','geoRadius','geoAngle'].map(id=>+$(id).value||null);
+  if(known.some(Boolean))return {width:known[0],flat:known[1],height:known[2],radius:known[3],angle:known[4],confidence:'manual'};
+  return null;
+}
+$('recognizeDimensions').onclick=()=>{
+  if(!state.pdfImage)return alert('Сначала загрузите страницу PDF и выделите нужный разрез.');
+  const c=parseDimensionCandidates();
+  if(!c){
+    $('recognitionBadge').style.display='inline-block';$('recognitionBadge').textContent='нужна проверка';
+    $('geometryInfo').innerHTML='<span class="warn">Автоматическое чтение цифр в этой beta-версии не подставляет сомнительные значения. Введите размеры с выделенного разреза вручную; в следующем модуле они будут приходить от AI/OCR API.</span>';
+    return;
+  }
+  state.recognizedDimensions=c;$('recognitionBadge').style.display='inline-block';$('recognitionBadge').textContent='операторские данные';
+};
+function guidePointText(p){return `X${Number(p.x).toFixed(3)} Z${Number(p.z).toFixed(3)}`}
+function detectElement(a,b,i){
+  const dx=b.x-a.x,dz=b.z-a.z;
+  if(Math.abs(dx)<1e-6)return {type:'Прямая по Z',fields:`X = ${b.x.toFixed(3)}; Z = ${b.z.toFixed(3)}`};
+  if(Math.abs(dz)<1e-6)return {type:'Прямая по X',fields:`X = ${b.x.toFixed(3)}; Z = ${b.z.toFixed(3)}`};
+  const geo=state.geometryElements||[], blend=geo.find(g=>g.type==='blend');
+  if(blend && (i===1 || i>Math.max(1,Math.floor(machinePoints().length*.7))))return {type:'Дуга / скругление',fields:`X = ${b.x.toFixed(3)}; Z = ${b.z.toFixed(3)}; R = ${Number(blend.radius||0).toFixed(3)}; направление проверить по графике`};
+  return {type:'Наклонная прямая',fields:`X = ${b.x.toFixed(3)}; Z = ${b.z.toFixed(3)}`};
+}
+function buildStockGuide(){
+  if(state.workMode!=='turn')return alert('Stock Removal доступен только для токарного профиля X/Z.');
+  if(!$('operatorConfirmed').checked)return alert('Сначала подтвердите проверку размеров, масштаба и нуля детали.');
+  const pts=machinePoints();if(pts.length<2)return alert('Нужно минимум две подтверждённые точки контура X/Z.');
+  const xMode=$('stockXMode').value, origin=$('stockOriginZ').value, ax=+$('allowX').value||0,az=+$('allowZ').value||0;
+  const converted=pts.map(p=>({x:xMode==='radius'?p.x/2:p.x,z:origin==='back'?p.z-(+$('stockL').value||0):p.z}));
+  const steps=[
+    {title:'Открыть цикл',body:'Program Manager → программа → Turning → Stock Removal.'},
+    {title:'Создать контур',body:`New Contour. Имя: ${($('title').value||'KONTUR_1').replace(/\s+/g,'_').toUpperCase().slice(0,24)}.`},
+    {title:'Проверить систему координат',body:`X: ${xMode==='diameter'?'диаметрный':'радиусный'} режим. ${origin==='front'?'Z0 на торце':'Z0 сзади детали'}. Обработка: ${$('stockKind').value==='outer'?'наружная':'внутренняя'}.`},
+    {title:'Начальная точка',body:guidePointText(converted[0])+' → Accept.'}
+  ];
+  for(let i=1;i<converted.length;i++){const el=detectElement(converted[i-1],converted[i],i);steps.push({title:`Элемент ${i}: ${el.type}`,body:el.fields+' → Accept.'})}
+  steps.push({title:'Закрыть и проверить',body:`Контур: ${$('contourClosure').value==='closed'?'закрытый':'открытый'}. Close contour → Graphic View. Припуск X=${ax.toFixed(3)} мм, Z=${az.toFixed(3)} мм.`});
+  steps.push({title:'Безопасная проверка',body:'Запустить графическую симуляцию. Первый прогон — без заготовки, Single Block, Rapid Override уменьшен.'});
+  state.stockGuide={steps,points:converted,meta:{xMode,origin,ax,az}};renderStockGuide();
+}
+function renderStockGuide(){
+  const g=state.stockGuide;if(!g)return;
+  $('guideMeta').innerHTML=`Точек: <b>${g.points.length}</b> · X: <b>${g.meta.xMode==='diameter'?'диаметр':'радиус'}</b> · припуск X/Z: <b>${g.meta.ax.toFixed(3)} / ${g.meta.az.toFixed(3)} мм</b>`;
+  $('guideSteps').innerHTML=g.steps.map((s,i)=>`<div class="guideStep"><span class="num">${i+1}</span><b>${s.title}</b><div class="small" style="margin-top:7px">${s.body}</div></div>`).join('');
+  const text=g.steps.map((s,i)=>`${i+1}. ${s.title}\n${s.body}`).join('\n\n');$('guideText').textContent=text;$('stockGuideStatus').textContent='Инструкция готова. Проверьте каждое значение на своей стойке.';
+  document.querySelector('[data-tab="controllerGuide"]').click();
+}
+$('buildStockGuide').onclick=buildStockGuide;
+$('copyGuide').onclick=()=>navigator.clipboard.writeText($('guideText').textContent);
+$('downloadGuide').onclick=()=>{const blob=new Blob([$('guideText').textContent],{type:'text/plain;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='SINUMERIK_828D_Stock_Removal.txt';a.click();URL.revokeObjectURL(a.href)};
 function buildToothGeometry(){const w=+$('geoWidth').value,f=+$('geoFlat').value,h=+$('geoHeight').value,r=+$('geoRadius').value,a=+$('geoAngle').value;if(!(w>0&&f>0&&h>0&&r>=0&&f<w))return alert('Проверьте размеры: общая ширина должна быть больше площадки.');const side=(w-f)/2,steps=8,pts=[];pts.push({x:-f/2,y:0});for(let i=1;i<=steps;i++){const t=i/steps;pts.push({x:-f/2-side*t,y:h*(1-Math.cos(t*Math.PI/2))})}for(let i=1;i<=steps;i++){const t=i/steps;pts.push({x:-w/2+w*t,y:h+Math.sin(t*Math.PI)*Math.min(r,h*.35)})}for(let i=1;i<=steps;i++){const t=i/steps;pts.push({x:w/2-side*t,y:h*Math.cos(t*Math.PI/2)})}pts.push({x:f/2,y:0},{x:-f/2,y:0});state.geometryElements=[{type:'line',name:'нижняя площадка',length:f},{type:'blend',name:'левый переход',radius:r,angle:a},{type:'arc',name:'верхняя дуга',span:w,height:h},{type:'blend',name:'правый переход',radius:r,angle:a}];state.pointsPx=geometryPointsToPixels(pts);$('geometryInfo').innerHTML=`<b>Построено:</b> площадка ${f} мм · ширина ${w} мм · высота ${h} мм · R${r} · ${a}°. Точек: ${pts.length}.`;syncContourText();draw()}
 $('buildGeometry').onclick=buildToothGeometry;$('clearGeometry').onclick=()=>{state.geometryElements=[];state.pointsPx=[];$('geometryInfo').textContent='Геометрия сброшена.';syncContourText();draw()};
 function imageToCanvas(px,py){if(!state.pdfImage)return[px,py];const cw=canvas.clientWidth,ch=canvas.clientHeight,iw=state.pdfImage.width,ih=state.pdfImage.height;const s=Math.min(cw/iw,ch/ih)*state.view.scale;const x=(cw-iw*s)/2+state.view.ox+px*s,y=(ch-ih*s)/2+state.view.oy+py*s;return[x,y];}
@@ -120,7 +229,25 @@ function pixelToMachine(p){if(!state.origin||!state.scalePxMm)return null;if(sta
 function machinePoints(){return state.pointsPx.map(pixelToMachine).filter(Boolean).map(p=>state.workMode==='mill'?({x:+p.x.toFixed(4),y:+p.y.toFixed(4)}):({z:+p.z.toFixed(4),x:+p.x.toFixed(4)}));}
 function machineToPixel(p){if(!state.origin||!state.scalePxMm)return null;const mul=$('diameterMode').checked?2:1;return{x:state.origin.x+p.z*state.scalePxMm,y:state.origin.y-(p.x/mul)*state.scalePxMm}}
 function ensureManualFrame(){if(state.origin&&state.scalePxMm)return;const l=+$('stockL').value||100,d=+$('stockD').value||100;state.scalePxMm=Math.min(canvas.clientWidth*.7/l,canvas.clientHeight*.65/(d/2));state.origin={x:canvas.clientWidth*.85,y:canvas.clientHeight*.82};$('scaleInfo').textContent=`Ручной масштаб: ${state.scalePxMm.toFixed(4)} px/мм`;}
-function syncContourText(){const pts=machinePoints();$('contourText').value=pts.map(p=>state.workMode==='mill'?`X${p.x.toFixed(3)} Y${p.y.toFixed(3)}`:`X${p.x.toFixed(3)} Z${p.z.toFixed(3)}`).join('\n')}
+function inferContourElement(pts,i){
+  if(i===0)return {type:'Начальная точка',extra:'—'};
+  const a=pts[i-1],b=pts[i],dx=b.x-a.x,dz=(b.z??b.y)-(a.z??a.y);
+  if(Math.abs(dx)<1e-5)return {type:'Прямая по Z',extra:'—'};
+  if(Math.abs(dz)<1e-5)return {type:'Прямая по X',extra:'—'};
+  const geo=(state.geometryElements||[]).find(g=>g.type==='blend');
+  if(geo&&(i===1||i===pts.length-1))return {type:'Дуга / скругление',extra:'R'+Number(geo.radius||0).toFixed(3)};
+  return {type:'Наклонная прямая',extra:'—'};
+}
+function renderContourTable(){
+  const pts=machinePoints(),body=$('contourTableBody'),isMill=state.workMode==='mill';
+  if(!body)return;
+  if(!pts.length){body.innerHTML='<tr><td colspan="5" class="muted">Контур ещё не построен.</td></tr>';$('contourStats').innerHTML='<span class="statPill">Точек: 0</span>';return}
+  body.innerHTML=pts.map((p,i)=>{const e=inferContourElement(pts,i),z=isMill?p.y:p.z;return `<tr data-index="${i}"><td>${i+1}</td><td><input data-axis="x" value="${Number(p.x).toFixed(3)}"></td><td><input data-axis="${isMill?'y':'z'}" value="${Number(z).toFixed(3)}"></td><td><select data-element><option${e.type==='Начальная точка'?' selected':''}>Начальная точка</option><option${e.type==='Прямая по X'?' selected':''}>Прямая по X</option><option${e.type==='Прямая по Z'?' selected':''}>Прямая по Z</option><option${e.type==='Наклонная прямая'?' selected':''}>Наклонная прямая</option><option${e.type==='Дуга / скругление'?' selected':''}>Дуга / скругление</option><option>Фаска</option></select></td><td><input data-extra value="${e.extra==='—'?'':e.extra}" placeholder="—"></td></tr>`}).join('');
+  const types=pts.map((_,i)=>inferContourElement(pts,i).type),lines=types.filter(x=>x.includes('Прямая')).length,arcs=types.filter(x=>x.includes('Дуга')).length,facets=types.filter(x=>x==='Фаска').length;
+  $('contourStats').innerHTML=`<span class="statPill">Точек: ${pts.length}</span><span class="statPill">Линий: ${lines}</span><span class="statPill">Дуг: ${arcs}</span><span class="statPill">Фасок: ${facets}</span>`;
+  const wrap=$('contourTableWrap'),rowH=32,headH=36;wrap.style.height=Math.min(Math.max(214,headH+pts.length*rowH),Math.max(300,innerHeight-300))+'px';
+}
+function syncContourText(){const pts=machinePoints();$('contourText').value=pts.map(p=>state.workMode==='mill'?`X${p.x.toFixed(3)} Y${p.y.toFixed(3)}`:`X${p.x.toFixed(3)} Z${p.z.toFixed(3)}`).join('\n');renderContourTable()}
 function draw(){const w=canvas.clientWidth,h=canvas.clientHeight;ctx.clearRect(0,0,w,h);ctx.fillStyle='#061018';ctx.fillRect(0,0,w,h);
  if(state.pdfImage&&state.pdfVisible){const [x,y]=imageToCanvas(0,0),[x2,y2]=imageToCanvas(state.pdfImage.width,state.pdfImage.height);ctx.globalAlpha=.48;ctx.drawImage(state.pdfImage,x,y,x2-x,y2-y);ctx.globalAlpha=1;}
  drawGrid();drawStock();drawCandidate();drawCrop();drawCalibration();drawOrigin();drawContour();}
@@ -131,7 +258,7 @@ function drawCandidate(){if(!state.pdfCandidate.length)return;ctx.strokeStyle='#
 function drawCrop(){if(!state.cropRect)return;const a=imageToCanvas(state.cropRect.x,state.cropRect.y),b=imageToCanvas(state.cropRect.x+state.cropRect.w,state.cropRect.y+state.cropRect.h);ctx.fillStyle='#3b91e822';ctx.strokeStyle='#3b91e8';ctx.lineWidth=2;ctx.setLineDash([8,5]);ctx.fillRect(a[0],a[1],b[0]-a[0],b[1]-a[1]);ctx.strokeRect(a[0],a[1],b[0]-a[0],b[1]-a[1]);ctx.setLineDash([]);ctx.fillStyle='#a8d7ff';ctx.fillText('Область распознавания',a[0]+8,a[1]+18)}
 function drawCalibration(){if(!state.calibration.length)return;ctx.fillStyle='#ffc766';state.calibration.forEach(p=>{const q=imageToCanvas(p.x,p.y);ctx.beginPath();ctx.arc(q[0],q[1],5,0,Math.PI*2);ctx.fill()});if(state.calibration.length===2){const a=imageToCanvas(state.calibration[0].x,state.calibration[0].y),b=imageToCanvas(state.calibration[1].x,state.calibration[1].y);ctx.strokeStyle='#ffc766';ctx.beginPath();ctx.moveTo(...a);ctx.lineTo(...b);ctx.stroke()}}
 function drawOrigin(){if(!state.origin)return;const q=imageToCanvas(state.origin.x,state.origin.y);ctx.strokeStyle='#49c987';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(q[0]-12,q[1]);ctx.lineTo(q[0]+12,q[1]);ctx.moveTo(q[0],q[1]-12);ctx.lineTo(q[0],q[1]+12);ctx.stroke();ctx.fillStyle='#49c987';ctx.fillText('X0/Z0',q[0]+8,q[1]-8)}
-function drawContour(){if(!state.pointsPx.length)return;ctx.strokeStyle='#ff6d75';ctx.lineWidth=3;ctx.beginPath();state.pointsPx.forEach((p,i)=>{const q=imageToCanvas(p.x,p.y);i?ctx.lineTo(...q):ctx.moveTo(...q)});ctx.stroke();ctx.fillStyle='#ff9298';state.pointsPx.forEach((p,i)=>{const q=imageToCanvas(p.x,p.y);ctx.beginPath();ctx.arc(q[0],q[1],4,0,Math.PI*2);ctx.fill();ctx.fillText(String(i+1),q[0]+5,q[1]-5)});$('pointCount').textContent='Точек: '+state.pointsPx.length;}
+function drawContour(){if(!state.pointsPx.length)return;ctx.strokeStyle='#ff6d75';ctx.lineWidth=3;ctx.beginPath();state.pointsPx.forEach((p,i)=>{const q=imageToCanvas(p.x,p.y);i?ctx.lineTo(...q):ctx.moveTo(...q)});ctx.stroke();ctx.fillStyle='#ff9298';state.pointsPx.forEach((p,i)=>{const q=imageToCanvas(p.x,p.y);ctx.beginPath();ctx.arc(q[0],q[1],4,0,Math.PI*2);ctx.fill();ctx.fillText(String(i+1),q[0]+5,q[1]-5)});$('pointCount').textContent='Точек: '+state.pointsPx.length;renderContourTable();}
 canvas.addEventListener('click',e=>{if(state.mode==='crop')return;const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,p=canvasToImage(x,y);const point={x:p[0],y:p[1]};if(state.mode==='draw'){state.pointsPx.push(point);syncContourText()}else if(state.mode==='origin'){state.origin=point;setMode('draw')}else if(state.mode==='calibrate'){state.calibration.push(point);if(state.calibration.length===2){const dx=state.calibration[1].x-state.calibration[0].x,dy=state.calibration[1].y-state.calibration[0].y,dist=Math.hypot(dx,dy),mm=+$('referenceMm').value;if(dist>0&&mm>0){state.scalePxMm=dist/mm;$('scaleInfo').textContent=`Масштаб: ${state.scalePxMm.toFixed(4)} px/мм`;setMode('origin')}else state.calibration=[]}}draw()});
 
 canvas.addEventListener('pointerdown',e=>{if(state.mode!=='crop'||!state.pdfImage)return;canvas.setPointerCapture(e.pointerId);const r=canvas.getBoundingClientRect(),p=canvasToImage(e.clientX-r.left,e.clientY-r.top);state.cropStart={x:p[0],y:p[1]};state.cropRect={x:p[0],y:p[1],w:0,h:0};draw()});
@@ -140,7 +267,17 @@ canvas.addEventListener('pointerup',e=>{if(state.mode!=='crop'||!state.cropStart
 canvas.addEventListener('mousemove',e=>{const r=canvas.getBoundingClientRect(),p=canvasToImage(e.clientX-r.left,e.clientY-r.top),m=pixelToMachine({x:p[0],y:p[1]});$('cursor').textContent=m?(state.workMode==='mill'?`X ${m.x.toFixed(3)} / Y ${m.y.toFixed(3)}`:`X ${m.x.toFixed(3)} / Z ${m.z.toFixed(3)}`):'X — / Z —'});
 $('undo').onclick=()=>{state.pointsPx.pop();syncContourText();draw()};$('clearContour').onclick=()=>{if(confirm('Очистить точки контура?')){state.pointsPx=[];syncContourText();draw()}};$('fit').onclick=()=>{state.view={scale:1,ox:0,oy:0};draw()};$('togglePdf').onclick=()=>{state.pdfVisible=!state.pdfVisible;draw()};$('useAuto').onclick=()=>{if(!state.pdfCandidate.length)return alert('Автоконтур не найден. Выделите нужный вид или постройте геометрию по размерам.');if(state.workMode==='turn'&&state.cropRect&&state.cropRect.w/state.cropRect.h<1.35)return alert('Выделенная область похожа на вид сверху, а не на продольный X/Z-профиль. Переключитесь в «Фрезерный X/Y» или выделите разрез.');if(state.candidateConfidence!=='high')return alert('Контур не применён: уверенность недостаточная. Используйте «Инженерную геометрию» или обведите профиль вручную.');state.pointsPx=state.pdfCandidate.map(p=>({x:p.px,y:p.py}));syncContourText();draw()};
 ['stockD','stockL','diameterMode'].forEach(id=>$(id).oninput=draw);
-$('exportContour').onclick=syncContourText;$('applyContour').onclick=()=>{const lines=$('contourText').value.split(/\n+/),pts=[];for(const line of lines){const mx=line.match(/X\s*(-?\d+(?:[.,]\d+)?)/i),mz=line.match(/Z\s*(-?\d+(?:[.,]\d+)?)/i);if(mx&&mz)pts.push({x:+mx[1].replace(',','.'),z:+mz[1].replace(',','.')});else{const nums=line.match(/-?\d+(?:[.,]\d+)?/g);if(nums&&nums.length>=2)pts.push({x:+nums[0].replace(',','.'),z:+nums[1].replace(',','.')})}}if(pts.length<2)return alert('Нужно минимум две строки X/Z.');ensureManualFrame();state.pointsPx=pts.map(machineToPixel).filter(Boolean);draw()};
+$('exportContour').onclick=syncContourText;
+$('addContourRow').onclick=()=>{
+  const pts=machinePoints(),last=pts[pts.length-1]||{x:0,z:0};pts.push({...last});
+  ensureManualFrame();state.pointsPx=pts.map(machineToPixel).filter(Boolean);syncContourText();draw();
+};
+$('applyContour').onclick=()=>{
+  const rows=[...document.querySelectorAll('#contourTableBody tr[data-index]')],pts=[];
+  for(const row of rows){const x=Number(row.querySelector('[data-axis="x"]').value.replace(',','.')),zEl=row.querySelector('[data-axis="z"],[data-axis="y"]'),z=Number(zEl.value.replace(',','.'));if(Number.isFinite(x)&&Number.isFinite(z))pts.push({x,z})}
+  if(pts.length<2)return alert('Нужно минимум две подтверждённые точки контура.');
+  ensureManualFrame();state.pointsPx=pts.map(machineToPixel).filter(Boolean);syncContourText();draw();
+};
 
 async function analyzePdf(useCrop=false){const file=state.pdfFile||$('pdfFile').files[0];if(!file)return alert('Выберите PDF.');state.pdfFile=file;const fd=new FormData();fd.append('file',file);fd.append('page_number',$('pdfPage').value||1);fd.append('telegram_id',$('telegramId').value||0);fd.append('rotation',state.rotation);fd.append('profile_type',$('profileType').value);if(useCrop){if(!state.cropRect||!state.pdfImage)return alert('Сначала нажмите «Выбрать область» и обведите нужный боковой вид.');fd.append('crop_x',state.cropRect.x/state.pdfImage.width);fd.append('crop_y',state.cropRect.y/state.pdfImage.height);fd.append('crop_w',state.cropRect.w/state.pdfImage.width);fd.append('crop_h',state.cropRect.h/state.pdfImage.height)}$('pdfInfo').textContent=useCrop?'Распознавание выбранной области…':'Обработка PDF…';try{const res=await fetch('/api/v1/client/pdf/analyze',{method:'POST',body:fd});const data=await res.json();if(!res.ok)throw new Error(data.detail||'Ошибка PDF');const img=new Image();img.onload=()=>{state.pdfImage=img;state.pdfCandidate=data.candidate_pixels||[];state.candidateConfidence=data.candidate_confidence||'low';state.cropRect=null;state.view={scale:1,ox:0,oy:0};const conf=data.candidate_confidence||'low';$('pdfInfo').innerHTML=`Страница ${data.page}/${data.page_count}; автоконтур: <b>${conf}</b>${data.crop_applied?' · область применена':''}; поворот: ${data.rotation}°; подсказки размеров: ${(data.dimension_hints||[]).slice(0,12).join(', ')||'нет'}`;if(!state.pdfCandidate.length&&useCrop)alert('В выбранной области надёжный X/Z-профиль не найден. Выделите боковой вид точнее или обведите контур вручную.');draw()};img.src=data.image_data_url}catch(err){$('pdfInfo').textContent='Ошибка: '+err.message}}
 $('uploadPdf').onclick=()=>{state.rotation=0;state.cropRect=null;analyzePdf(false)};
@@ -172,6 +309,6 @@ async function loadMachineProfile(){const tid=+$('telegramId').value,mid=+$('mac
 ['chuckD','turretCount','machineAxes','probe','maxRpm'].forEach(id=>$(id).oninput=renderMachine);
 try{const saved=JSON.parse(localStorage.getItem('cncTurret')||'null');if(Array.isArray(saved)&&saved.length)state.turret=saved}catch(e){}
 const qs=new URLSearchParams(location.search);$('telegramId').value=qs.get('telegram_id')||localStorage.telegramId||'';$('machineId').value=qs.get('machine_id')||'';$('telegramId').onchange=()=>{localStorage.telegramId=$('telegramId').value;loadMachineProfile()};$('machineId').onchange=loadMachineProfile;loadMachineProfile();renderMachine();
-updateWorkMode();addOperation('turn_rough');addOperation('turn_finish');
+updateWorkMode();renderContourTable();addOperation('turn_rough');addOperation('turn_finish');
 </script>
 </body></html>'''

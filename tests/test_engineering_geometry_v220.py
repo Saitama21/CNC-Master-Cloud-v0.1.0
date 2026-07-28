@@ -2,7 +2,7 @@ from app.client_ui import CLIENT_HTML
 
 
 def test_v220_engineering_geometry_controls_present():
-    assert "v2.2.0" in CLIENT_HTML
+    assert "v2.3.0" in CLIENT_HTML
     assert 'id="workMode"' in CLIENT_HTML
     assert 'value="turn"' in CLIENT_HTML
     assert 'value="mill"' in CLIENT_HTML
