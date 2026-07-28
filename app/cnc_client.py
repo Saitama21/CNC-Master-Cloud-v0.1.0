@@ -440,6 +440,30 @@ def analyze_pdf_bytes(
     png = pix.tobytes("png")
     text = page.get_text("text") or ""
     dimensions = sorted(set(re.findall(r"(?<!\d)(\d{1,4}(?:[.,]\d{1,3})?)(?:\s*(?:mm|мм))?", text, flags=re.I)))[:80]
+    dimension_entities: list[dict[str, Any]] = []
+    patterns = [
+        ("diameter", r"(?:Ø|⌀|\bD)\s*(\d{1,4}(?:[.,]\d{1,3})?)"),
+        ("radius", r"\bR\s*(\d{1,4}(?:[.,]\d{1,3})?)"),
+        ("angle", r"(\d{1,3}(?:[.,]\d+)?)\s*[°º]"),
+        ("linear", r"(?<![A-Za-zА-Яа-яØ⌀R])(?<!\d)(\d{1,4}(?:[.,]\d{1,3})?)(?:\s*(?:mm|мм))?(?!\d)"),
+    ]
+    seen_entities: set[tuple[str, float]] = set()
+    for kind, pattern in patterns:
+        for match in re.finditer(pattern, text, flags=re.I):
+            raw = match.group(0).strip()
+            try:
+                value = float(match.group(1).replace(",", "."))
+            except (ValueError, IndexError):
+                continue
+            if value <= 0 or value > 100000:
+                continue
+            key = (kind, round(value, 4))
+            if key in seen_entities:
+                continue
+            seen_entities.add(key)
+            confidence = 0.94 if kind in {"diameter", "radius", "angle"} else 0.72
+            dimension_entities.append({"raw": raw, "value": value, "kind": kind, "confidence": confidence})
+    dimension_entities = dimension_entities[:120]
 
     candidate: list[dict[str, float]] = []
     confidence = "low"
@@ -560,6 +584,7 @@ def analyze_pdf_bytes(
         "image_data_url": "data:image/png;base64," + base64.b64encode(png).decode("ascii"),
         "text_preview": text[:5000],
         "dimension_hints": dimensions,
+        "dimension_entities": dimension_entities,
         "candidate_pixels": candidate,
         "candidate_confidence": confidence,
         "crop_applied": bool(crop),
@@ -575,3 +600,54 @@ def analyze_pdf_bytes(
 def gcode_filename(title: str) -> str:
     normalized = re.sub(r"[^A-Za-z0-9А-Яа-я_-]+", "_", title).strip("_")
     return (normalized or "cnc_project")[:80] + ".mpf"
+
+
+def analyze_image_bytes(data: bytes, rotation: int = 0, profile_type: str = "outer") -> dict[str, Any]:
+    """Prepare a raster drawing/photo for operator-guided recognition.
+
+    Raster images do not contain a trustworthy text layer, so this function never
+    invents dimensions. It returns the normalized preview and leaves dimensions
+    empty for manual confirmation or a future OCR provider.
+    """
+    if not data:
+        raise ClientValidationError("Файл изображения пустой.")
+    if len(data) > 20 * 1024 * 1024:
+        raise ClientValidationError("Изображение больше 20 МБ.")
+    try:
+        import cv2  # type: ignore
+        import numpy as np  # type: ignore
+    except ImportError as exc:
+        raise ClientValidationError("На сервере не установлен OpenCV.") from exc
+    image = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_COLOR)
+    if image is None:
+        raise ClientValidationError("Не удалось прочитать изображение.")
+    rotation = int(rotation or 0) % 360
+    if rotation == 90:
+        image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+    elif rotation == 180:
+        image = cv2.rotate(image, cv2.ROTATE_180)
+    elif rotation == 270:
+        image = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+    ok, encoded = cv2.imencode(".png", image)
+    if not ok:
+        raise ClientValidationError("Не удалось подготовить изображение.")
+    h, w = image.shape[:2]
+    return {
+        "page": 1,
+        "page_count": 1,
+        "width_px": w,
+        "height_px": h,
+        "image_data_url": "data:image/png;base64," + base64.b64encode(encoded.tobytes()).decode("ascii"),
+        "text_preview": "",
+        "dimension_hints": [],
+        "dimension_entities": [],
+        "candidate_pixels": [],
+        "candidate_confidence": "low",
+        "crop_applied": False,
+        "rotation": rotation,
+        "profile_type": profile_type,
+        "warnings": [
+            "Фото не содержит текстового слоя: размеры необходимо подтвердить вручную.",
+            "Перед построением задайте масштаб по известному размеру.",
+        ],
+    }

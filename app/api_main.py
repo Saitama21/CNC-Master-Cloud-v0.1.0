@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.admin_ui import ADMIN_HTML
 from app.client_ui import CLIENT_HTML
-from app.cnc_client import ClientValidationError, analyze_pdf_bytes, generate_engineering_plan
+from app.cnc_client import ClientValidationError, analyze_pdf_bytes, analyze_image_bytes, generate_engineering_plan
 from app.catalog_data import CATEGORY_LABELS, catalog_count, get_item, search_catalog
 from app.config import settings
 from app.db import SessionLocal, get_session, init_db
@@ -78,8 +78,8 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title=settings.app_name,
-    version="2.1.0",
-    description="CNC Master Cloud Engineering Client: PDF, контуры X/Z, Stock Removal, инструмент и G-код.",
+    version="2.4.0",
+    description="CNC Master Cloud Engineering Client: Drawing Intelligence, PDF/фото, инженерная геометрия, Stock Removal и SINUMERIK 828D.",
     lifespan=lifespan,
 )
 
@@ -144,10 +144,13 @@ async def client_analyze_pdf(
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     await _require_feature(session, telegram_id, "pdf_scan")
-    if file.content_type not in {"application/pdf", "application/octet-stream"}:
-        raise HTTPException(status_code=415, detail="Загрузите PDF-файл.")
+    supported_images = {"image/png", "image/jpeg", "image/webp"}
+    if file.content_type not in {"application/pdf", "application/octet-stream", *supported_images}:
+        raise HTTPException(status_code=415, detail="Загрузите PDF, PNG, JPG или WEBP.")
     data = await file.read()
     try:
+        if file.content_type in supported_images:
+            return analyze_image_bytes(data, rotation=rotation, profile_type=profile_type)
         crop = None
         if None not in {crop_x, crop_y, crop_w, crop_h}:
             crop = (float(crop_x), float(crop_y), float(crop_w), float(crop_h))
