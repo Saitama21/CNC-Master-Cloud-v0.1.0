@@ -1,6 +1,6 @@
 {
   "project": "CNC Master Cloud ENGINEERING CLIENT",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "creator": "Єрошов Іван",
   "catalog_items": 1067,
   "features": [
@@ -13,6 +13,9 @@
     "tool-by-tool instructions",
     "project G-code and MPF export",
     "saved engineering projects",
-    "hourly admin limits for client, PDF scan, and G-code generation"
+    "hourly admin limits for client, PDF scan, and G-code generation",
+    "machine digital passport loaded from Telegram profile",
+    "15-station turret editor with driven-tool flags",
+    "chuck, axes and Renishaw setup saved with engineering projects"
   ]
 }

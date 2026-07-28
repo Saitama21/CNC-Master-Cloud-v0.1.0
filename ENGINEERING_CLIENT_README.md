@@ -1,4 +1,4 @@
-# CNC Master Cloud Engineering Client v2.0.0
+# CNC Master Cloud Engineering Client v2.1.0
 
 Веб-клиент открывается по адресу:
 

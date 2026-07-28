@@ -78,7 +78,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title=settings.app_name,
-    version="2.0.0",
+    version="2.1.0",
     description="CNC Master Cloud Engineering Client: PDF, контуры X/Z, Stock Removal, инструмент и G-код.",
     lifespan=lifespan,
 )
