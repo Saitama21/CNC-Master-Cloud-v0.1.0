@@ -436,30 +436,76 @@ def analyze_pdf_bytes(data: bytes, page_number: int = 1) -> dict[str, Any]:
             for contour in contours:
                 x, y, w, h = cv2.boundingRect(contour)
                 area = abs(cv2.contourArea(contour))
-                perimeter = cv2.arcLength(contour, False)
-                if w < width * 0.08 or h < height * 0.02:
+                perimeter = cv2.arcLength(contour, True)
+                aspect = w / max(1.0, float(h))
+                center_y = y + h / 2.0
+
+                # A turning profile is normally shown as an elongated side view.
+                # Reject page frames, tiny annotations, circles and the large front view.
+                if w < width * 0.18 or h < height * 0.012:
                     continue
-                if w > width * 0.95 and h > height * 0.95:
+                if w > width * 0.97 and h > height * 0.97:
                     continue
-                score = perimeter + area * 0.01
+                if aspect < 2.2:
+                    continue
+
+                top_bonus = 2.0 if center_y < height * 0.48 else 0.4
+                aspect_bonus = min(aspect, 18.0)
+                width_bonus = 8.0 * (w / width)
+                thickness_penalty = 2.5 * (h / height)
+                score = perimeter * 0.02 + aspect_bonus + width_bonus + top_bonus - thickness_penalty
                 scored.append((score, contour))
+
             if scored:
                 scored.sort(key=lambda item: item[0], reverse=True)
-                selected = scored[0][1]
-                epsilon = max(1.5, 0.004 * cv2.arcLength(selected, False))
-                approx = cv2.approxPolyDP(selected, epsilon, False)
-                raw_points = [tuple(map(float, point[0])) for point in approx]
-                raw_points.sort(key=lambda item: item[0])
-                # Keep one representative point per small horizontal bucket.
-                bucket: dict[int, tuple[float, float]] = {}
-                for px, py in raw_points:
-                    bucket[int(px // 4)] = (px, py)
-                simplified = list(bucket.values())
-                if len(simplified) > 220:
-                    step = max(1, len(simplified) // 220)
-                    simplified = simplified[::step]
-                candidate = [{"px": round(px, 2), "py": round(py, 2)} for px, py in simplified]
-                confidence = "medium" if len(candidate) >= 4 else "low"
+                selected = scored[0][1].reshape(-1, 2)
+
+                # Keep the upper chain of the selected closed outline.  Using the
+                # contour's native order avoids the old zig-zag caused by sorting
+                # unrelated points only by X coordinate.
+                left_i = int(np.argmin(selected[:, 0]))
+                right_i = int(np.argmax(selected[:, 0]))
+
+                def contour_path(start: int, end: int) -> Any:
+                    if start <= end:
+                        return selected[start : end + 1]
+                    return np.vstack((selected[start:], selected[: end + 1]))
+
+                path_a = contour_path(left_i, right_i)
+                path_b = contour_path(right_i, left_i)[::-1]
+                upper = path_a if float(np.mean(path_a[:, 1])) <= float(np.mean(path_b[:, 1])) else path_b
+
+                # Collapse repeated X columns to the highest edge point, then
+                # simplify while preserving left-to-right profile order.
+                by_x: dict[int, tuple[float, float]] = {}
+                for px, py in upper:
+                    key = int(round(float(px)))
+                    current = by_x.get(key)
+                    if current is None or float(py) < current[1]:
+                        by_x[key] = (float(px), float(py))
+                ordered = [by_x[key] for key in sorted(by_x)]
+
+                if len(ordered) >= 2:
+                    curve = np.array(ordered, dtype=np.float32).reshape(-1, 1, 2)
+                    epsilon = max(1.0, 0.0025 * cv2.arcLength(curve, False))
+                    approx = cv2.approxPolyDP(curve, epsilon, False)
+                    simplified = [tuple(map(float, point[0])) for point in approx]
+                else:
+                    simplified = ordered
+
+                # Remove almost duplicate points and cap payload size.
+                clean: list[tuple[float, float]] = []
+                for point in simplified:
+                    if not clean or abs(point[0] - clean[-1][0]) >= 1.0 or abs(point[1] - clean[-1][1]) >= 1.0:
+                        clean.append(point)
+                if len(clean) > 160:
+                    step = max(1, len(clean) // 160)
+                    clean = clean[::step]
+                    if clean[-1] != simplified[-1]:
+                        clean.append(simplified[-1])
+
+                candidate = [{"px": round(px, 2), "py": round(py, 2)} for px, py in clean]
+                confidence = "high" if len(candidate) >= 3 else "low"
     except Exception:
         # The manual tracing path remains available even if OpenCV cannot parse the drawing.
         candidate = []
