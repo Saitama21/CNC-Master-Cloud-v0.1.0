@@ -1,5 +1,5 @@
 {
-  "version": "2.3.0-PRO",
+  "version": "2.3.0-pro-stainless",
   "files": 49,
   "sha256": {
     ".env.example": "5fdf2b79a7d192aff3c02a429feee548de51f3806253b742c827eaeb88198238",
@@ -51,5 +51,11 @@
     "tests/test_stock_guide_v230.py": "0e2445668f3d6549574cd08c28bda55e48360f879d2fe0d6c5835ec77e4cffef",
     "tests/test_structure.py": "69e3c1109c9bb5a5f76cf4e7d7effb9b479259caf2f8a376df3125b54dc70f2f",
     "tests/test_tool_catalog.py": "b661e6d58bc38a8ec90d4b173396bb089ba7fc7ff17afe6dfbd7767196d7f0af"
-  }
+  },
+  "build": "2026-07-29-stainless-logo",
+  "features": [
+    "metal_brand_plate",
+    "stainless_3d_logo",
+    "transparent_logo_asset"
+  ]
 }
