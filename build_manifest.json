@@ -1,27 +1,55 @@
 {
-  "version": "2.1.2",
-  "release": "PDF safe-region autocontour",
-  "tests_passed": 22,
-  "files": {
-    "app/cnc_client.py": {
-      "sha256": "787fb37a3a8f18d15d7b89b591f19f274fe395b597f4fb836ce449fa03da4949",
-      "bytes": 26068
-    },
-    "app/client_ui.py": {
-      "sha256": "6fa15a1bc229a5f61c4149fb5396cbc3724f6cb7dea78eb447f3268450438b3d",
-      "bytes": 40755
-    },
-    "app/api_main.py": {
-      "sha256": "1501c60bfc64df810ec4a5ec9a0323fe0ee01c244d899878263f45d1cd5229a3",
-      "bytes": 31351
-    },
-    "UPDATE_v2.1.2.txt": {
-      "sha256": "6eaca7990febff9baeb4ce762a393e949a55af8f13fb4d0835c31566b6e01365",
-      "bytes": 1608
-    },
-    "tests/test_pdf_region.py": {
-      "sha256": "94211ccf246b7aa4152dd3a241615a466817b658557bb6ab5fdf0f0c335a83dd",
-      "bytes": 337
-    }
+  "version": "2.2.0",
+  "files": 49,
+  "sha256": {
+    "UPDATE_v2.1.1.txt": "08d363795d913671b5369601b6f1d640c21c78f35f84574531a93f1e3c57d243",
+    "README.md": "5d021fff03894d11cd7a06a02eb743355c5a32f5daa51b6840be9c4da883158c",
+    "docker-compose.yml": "98270fb04aa5c6fd6c9051fbd2ddf43b7bc61d8a8d7c54c33f04e1356c85eb74",
+    "UPDATE_v2.1.2.txt": "6eaca7990febff9baeb4ce762a393e949a55af8f13fb4d0835c31566b6e01365",
+    "UPDATE_FULL_PRO.txt": "6e021e3fae0b835143f92672c88f5d190799a32a4c2a06910798793db055cc9c",
+    "ENGINEERING_CLIENT_README.md": "e1c4aeb2730856e97e81e5141c6a1f63be543bcad3e76eec416d829837b5f6e6",
+    "UPDATE_ENGINEERING_CLIENT.txt": "46f5f21542622dd11c55006246d53161969694666dfb587915609efad35300b5",
+    "Dockerfile": "acf7651443400ba88490f13a470fc5d74ec8ea58ce8a238e85c75ee7ec62dd01",
+    ".env.example": "5fdf2b79a7d192aff3c02a429feee548de51f3806253b742c827eaeb88198238",
+    "Makefile": "d2dd25a25dca641aa0c8aeb66f1f5f3b00be9fbaf92ad551d856b766375feed4",
+    "UPDATE_v2.2.0.txt": "ebfb905352f9cd08363315f1590e84dc9492b94bff219b21565a0a993f61a238",
+    "pytest.ini": "07e12af78809b103a9e003b9bf24f9718928fa263046b37bf3ebc9ebbf802ceb",
+    "requirements.txt": "365af3f0c52a8dc6ef4da4e12751f503a6432e3005d16e61965e309b495e78c3",
+    "requirements-dev.txt": "144c4bb425055eff3c56b11f68750d2e5d64c4cde8ce69ec344aaa1bae4b7959",
+    "UPDATE_v2.1.0.txt": "d6cfc2d0636a0fa97438e411a3943766e7c5f1ed38c13699a7c5fdd921523bcc",
+    "UPDATE_v0.3.0.txt": "4b545713ab0e23c1015f4c1f0a67b44f21c8a4d0f779326d7d03716dd62b45ff",
+    ".gitignore": "d21656f79e96d9aa0bd4cc24becde6cb19c2527389b09de1b28f1760d0ed83e6",
+    "build_manifest.json": "c5b3ebdbab8c904c688cb248d3fb9e2adcc9375cfd56ccf381a3c26aa33bc1a0",
+    "docs/ROADMAP.md": "b5b33fca7cb42d67c113707144b9a86e495289809ae87c62c1b31610e47228b8",
+    "tests/test_pdf_region.py": "94211ccf246b7aa4152dd3a241615a466817b658557bb6ab5fdf0f0c335a83dd",
+    "tests/test_tool_catalog.py": "b661e6d58bc38a8ec90d4b173396bb089ba7fc7ff17afe6dfbd7767196d7f0af",
+    "tests/test_full_pro.py": "49fff9acd24d650ab2aaebe049a83e04faa056ed36cf480692d59d156fd93ee0",
+    "tests/test_engineering_geometry_v220.py": "e9650009e94a35c599b0484573bc00256f36104341bd631e2661bab6b869311d",
+    "tests/test_machine_selection.py": "f5e32a01fa6940df7c591890ba12cd9f268fb55cf81f590085ca79dd19556820",
+    "tests/test_cnc_logic.py": "8f8bf632f4a1e20774ac374dcce638d8aeca169df421a0bb94c4ed748d1f6476",
+    "tests/test_engineering_client.py": "0c195619c3aadfd93d1ca638fc243857b33a686df5e28f5fcf7795e0d2cbd559",
+    "tests/test_structure.py": "69e3c1109c9bb5a5f76cf4e7d7effb9b479259caf2f8a376df3125b54dc70f2f",
+    ".pytest_cache/README.md": "73fd6fccdd802c419a6b2d983d6c3173b7da97558ac4b589edec2dfe443db9ad",
+    ".pytest_cache/CACHEDIR.TAG": "37dc88ef9a0abeddbe81053a6dd8fdfb13afb613045ea1eb4a5c815a74a3bde4",
+    ".pytest_cache/.gitignore": "3ed731b65d06150c138e2dadb0be0697550888a6b47eb8c45ecc9adba8b8e9bd",
+    "app/__init__.py": "1df8d53aba539e667ec551426125665f9d045da050789b5e5071be3c3ea242cf",
+    "app/config.py": "0e81bad90719972c43a3a20876daae2e72c196684b860cc4f6a3528a437ec05c",
+    "app/models.py": "5a5e83cb29ad5cd1b9462c2a6354df502289863f5826a75625c4e28b35b78300",
+    "app/client_ui.py": "fd3c412e8f6dc20a18ea3d55ec630f8f16eff52145e85e396aeb1a0236523a79",
+    "app/cnc_logic.py": "1cca09e04a7c9f8f966468e020b2e7ab0fe6b946c9cfd8c760ed7a00a9e6fa2f",
+    "app/admin_ui.py": "035526946b33f2124502a19edc79f0d9c5d126df2a0febe1b2040897c77303be",
+    "app/db.py": "f02a7f3b854fcc645c593920ce7770da0554b5fe3dc60bb15d6ee9be5ea9a608",
+    "app/usage_limits.py": "4470bb78c169acbf8b788710b0f125072647b26715b1a8ce23a3f129bc67adb4",
+    "app/bot_main.py": "395ba94d192d12a6a9f8a919a77e3a883114c41e72a187fda2c4631a87b43baa",
+    "app/schemas.py": "6a523117fb9967dee81f394ffaa351b6ab60a8ab48fdf34253cdc8096a385bb2",
+    "app/cnc_client.py": "787fb37a3a8f18d15d7b89b591f19f274fe395b597f4fb836ce449fa03da4949",
+    "app/tool_catalog.py": "4ec13fb97d1d2a6a0e36e1d3ee7ba5d6fee9e15ae752e611d3a16f26a5e7106b",
+    "app/api_main.py": "1501c60bfc64df810ec4a5ec9a0323fe0ee01c244d899878263f45d1cd5229a3",
+    "app/calculators.py": "44706da739eacf699dd7468b7c4bb629ec3a4da00f2033bba5ea3a4c6a955793",
+    "app/seed.py": "7d2743f50efa5a858f85488c253bd790e8e836334c243d8c175dc6e6fc97a80d",
+    "app/api_client.py": "d490d3cdf9e7e5ca45283ea4b215be04d6705ec404b3e733a7a8488b58b00db1",
+    "app/keyboards.py": "24bf853000fdbfca8acb300d518663a125a66aaca655aaa31216f241aeae4daa",
+    "app/catalog_data.py": "c65ff0ce6ee199cfcc706225cbf66606ff3028171b79c223467d33980ace61de",
+    ".pytest_cache/v/cache/nodeids": "6a482d25ccb39d4e6cabecc4d35b2dc4b281169f54022b6ee97de73f22e8d9d9"
   }
 }
