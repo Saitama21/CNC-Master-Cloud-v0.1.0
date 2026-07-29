@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.admin_ui import ADMIN_HTML
 from app.client_ui import CLIENT_HTML
-from app.cnc_client import ClientValidationError, analyze_pdf_bytes, analyze_image_bytes, generate_engineering_plan
+from app.cnc_client import ClientValidationError, analyze_pdf_bytes, analyze_image_bytes, generate_engineering_plan, preprocess_drawing_region_bytes
 from app.openai_drawing import analyze_drawing_region_with_openai
 from app.catalog_data import CATEGORY_LABELS, catalog_count, get_item, search_catalog
 from app.config import settings
@@ -79,8 +79,8 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title=settings.app_name,
-    version="2.8.0",
-    description="CNC Master Cloud v2.8.0: PDF region workflow, quality-gated AutoContour, AI Stock Removal and SINUMERIK 828D.",
+    version="3.1.0",
+    description="CNC Assistant Client Pro v3.1.0: OpenCV drawing cleanup, AI contour and SINUMERIK 828D.",
     lifespan=lifespan,
 )
 
@@ -160,12 +160,46 @@ async def client_analyze_pdf(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+@app.post("/api/v1/client/opencv/preview", tags=["engineering-client"])
+async def client_opencv_preview(
+    image: UploadFile = File(...),
+    telegram_id: int = Form(default=0),
+    remove_text: bool = Form(default=True),
+    remove_hatching: bool = Form(default=True),
+    strengthen_lines: bool = Form(default=True),
+    close_gaps: bool = Form(default=True),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    await _require_feature(session, telegram_id, "pdf_scan", consume=False)
+    data = await image.read()
+    try:
+        prepared = preprocess_drawing_region_bytes(
+            data,
+            remove_text=remove_text,
+            remove_hatching=remove_hatching,
+            strengthen_lines=strengthen_lines,
+            close_gaps=close_gaps,
+        )
+        return {
+            "cleaned_image_data_url": prepared["cleaned_image_data_url"],
+            "comparison_image_data_url": prepared["comparison_image_data_url"],
+            "diagnostics": prepared["diagnostics"],
+        }
+    except ClientValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 @app.post("/api/v1/client/ai/region", tags=["engineering-client"])
 async def client_ai_region(
     image: UploadFile = File(...),
     telegram_id: int = Form(default=0),
     profile_type: str = Form(default="outer"),
     x_mode: str = Form(default="diameter"),
+    use_opencv: bool = Form(default=True),
+    remove_text: bool = Form(default=True),
+    remove_hatching: bool = Form(default=True),
+    strengthen_lines: bool = Form(default=True),
+    close_gaps: bool = Form(default=True),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     await _require_feature(session, telegram_id, "pdf_scan")
@@ -175,12 +209,21 @@ async def client_ai_region(
     if not data or len(data) > 12 * 1024 * 1024:
         raise HTTPException(status_code=422, detail="Выбранная область пуста или больше 12 МБ.")
     import base64
-    mime = image.content_type if image.content_type and image.content_type.startswith("image/") else "image/png"
+    preprocessing = None
+    if use_opencv:
+        preprocessing = preprocess_drawing_region_bytes(data, remove_text=remove_text, remove_hatching=remove_hatching, strengthen_lines=strengthen_lines, close_gaps=close_gaps)
+        data = preprocessing["cleaned_bytes"]
+        mime = "image/png"
+    else:
+        mime = image.content_type if image.content_type and image.content_type.startswith("image/") else "image/png"
     image_data_url = f"data:{mime};base64," + base64.b64encode(data).decode("ascii")
     try:
-        return await analyze_drawing_region_with_openai(
+        result = await analyze_drawing_region_with_openai(
             image_data_url, profile_type=profile_type, x_mode=x_mode
         )
+        if preprocessing:
+            result["opencv_diagnostics"] = preprocessing["diagnostics"]
+        return result
     except ClientValidationError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

@@ -737,3 +737,116 @@ def analyze_image_bytes(data: bytes, rotation: int = 0, profile_type: str = "out
             "Перед построением задайте масштаб по известному размеру.",
         ],
     }
+
+
+def preprocess_drawing_region_bytes(
+    data: bytes,
+    *,
+    remove_text: bool = True,
+    remove_hatching: bool = True,
+    strengthen_lines: bool = True,
+    close_gaps: bool = True,
+) -> dict[str, Any]:
+    """OpenCV preparation for technical drawing regions.
+
+    The result is a conservative cleaned image for AI interpretation. It never
+    converts pixels into machine dimensions and therefore cannot replace scale
+    calibration or operator confirmation.
+    """
+    if not data or len(data) > 12 * 1024 * 1024:
+        raise ClientValidationError("Выбранная область пуста или больше 12 МБ.")
+    try:
+        import cv2  # type: ignore
+        import numpy as np  # type: ignore
+    except ImportError as exc:
+        raise ClientValidationError("На сервере не установлен OpenCV.") from exc
+
+    src = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
+    if src is None:
+        raise ClientValidationError("OpenCV не смог прочитать выбранную область.")
+    h, w = src.shape[:2]
+    if min(h, w) < 40:
+        raise ClientValidationError("Выбранная область слишком маленькая для OpenCV.")
+
+    norm = cv2.normalize(src, None, 0, 255, cv2.NORM_MINMAX)
+    norm = cv2.GaussianBlur(norm, (3, 3), 0)
+    ink = cv2.adaptiveThreshold(
+        norm, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY_INV, 31, 11,
+    )
+
+    removed_small = 0
+    if remove_text:
+        # Remove compact connected components typical of digits, letters and
+        # arrowheads. Long outline segments are deliberately retained.
+        count, labels, stats, _ = cv2.connectedComponentsWithStats(ink, 8)
+        keep = np.zeros_like(ink)
+        max_small_h = max(10, int(h * 0.055))
+        max_small_w = max(12, int(w * 0.075))
+        for idx in range(1, count):
+            x, y, cw, ch, area = stats[idx]
+            aspect = cw / max(ch, 1)
+            compact = cw <= max_small_w and ch <= max_small_h and area < max(180, int(w*h*0.0012))
+            arrow_like = area < max(90, int(w*h*0.00045)) and 0.35 < aspect < 3.2
+            if compact or arrow_like:
+                removed_small += 1
+                continue
+            keep[labels == idx] = 255
+        ink = keep
+
+    removed_hatch_pixels = 0
+    if remove_hatching:
+        # Detect repeated thin diagonal strokes with morphology. Kernels cover
+        # both common hatch directions; subtraction is intentionally mild.
+        length = max(9, min(31, int(min(h, w) * 0.035)))
+        diag1 = np.eye(length, dtype=np.uint8)
+        diag2 = np.fliplr(diag1)
+        hatch1 = cv2.morphologyEx(ink, cv2.MORPH_OPEN, diag1)
+        hatch2 = cv2.morphologyEx(ink, cv2.MORPH_OPEN, diag2)
+        hatch = cv2.bitwise_or(hatch1, hatch2)
+        # Preserve strokes that are also part of strong horizontal/vertical outlines.
+        hk = cv2.getStructuringElement(cv2.MORPH_RECT, (max(9, length), 1))
+        vk = cv2.getStructuringElement(cv2.MORPH_RECT, (1, max(9, length)))
+        structural = cv2.bitwise_or(
+            cv2.morphologyEx(ink, cv2.MORPH_OPEN, hk),
+            cv2.morphologyEx(ink, cv2.MORPH_OPEN, vk),
+        )
+        hatch = cv2.bitwise_and(hatch, cv2.bitwise_not(cv2.dilate(structural, np.ones((3,3), np.uint8))))
+        removed_hatch_pixels = int(cv2.countNonZero(hatch))
+        ink = cv2.bitwise_and(ink, cv2.bitwise_not(hatch))
+
+    if close_gaps:
+        ink = cv2.morphologyEx(
+            ink, cv2.MORPH_CLOSE,
+            cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)), iterations=1,
+        )
+    if strengthen_lines:
+        ink = cv2.dilate(ink, cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2)), iterations=1)
+
+    cleaned = cv2.bitwise_not(ink)
+    # Side-by-side diagnostic preview helps the operator see exactly what GPT gets.
+    original_bgr = cv2.cvtColor(src, cv2.COLOR_GRAY2BGR)
+    cleaned_bgr = cv2.cvtColor(cleaned, cv2.COLOR_GRAY2BGR)
+    divider = np.full((h, 4, 3), 90, dtype=np.uint8)
+    comparison = np.hstack([original_bgr, divider, cleaned_bgr])
+
+    ok1, enc_clean = cv2.imencode('.png', cleaned)
+    ok2, enc_compare = cv2.imencode('.png', comparison)
+    if not ok1 or not ok2:
+        raise ClientValidationError("OpenCV не смог сформировать предпросмотр.")
+    return {
+        "cleaned_bytes": enc_clean.tobytes(),
+        "cleaned_image_data_url": "data:image/png;base64," + base64.b64encode(enc_clean.tobytes()).decode("ascii"),
+        "comparison_image_data_url": "data:image/png;base64," + base64.b64encode(enc_compare.tobytes()).decode("ascii"),
+        "diagnostics": {
+            "algorithm": "opencv-drawing-clean-v1",
+            "width": w,
+            "height": h,
+            "removed_small_components": removed_small,
+            "removed_hatch_pixels": removed_hatch_pixels,
+            "remove_text": remove_text,
+            "remove_hatching": remove_hatching,
+            "strengthen_lines": strengthen_lines,
+            "close_gaps": close_gaps,
+        },
+    }

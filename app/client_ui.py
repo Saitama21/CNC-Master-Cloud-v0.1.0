@@ -117,7 +117,7 @@ button:hover{transform:translateY(-1px);border-color:rgba(99,164,255,.55);box-sh
 <header class="iosHeader">
   <div class="brandBlock">
     <div class="brandText"><div class="brandTitle">CNC Assistant Client Pro</div><div class="brandSub">AI Contour · PDF → Stock Removal</div></div>
-    <span class="badge">v3.0 AI Edition</span>
+    <span class="badge">v3.1 OpenCV + AI</span>
   </div>
   <div class="flowSteps" aria-label="Этапы работы"><span class="active">1 PDF</span><span>2 Область</span><span>3 AI-контур</span><span>4 Проверка</span><span>5 SINUMERIK</span></div>
   <div class="spacer"></div>
@@ -150,7 +150,16 @@ button:hover{transform:translateY(-1px);border-color:rgba(99,164,255,.55);box-sh
     <div class="row" style="margin-top:7px"><input id="pdfPage" type="number" min="1" value="1" style="width:75px"><button id="uploadPdf">Загрузить страницу</button></div>
     <div class="row" style="margin-top:7px"><select id="profileType"><option value="outer">Наружный профиль</option><option value="inner">Внутренний профиль</option><option value="free">Произвольный контур</option></select><button id="selectRegion">▭ Выбрать область</button><button id="reanalyzeRegion">✨ Распознать область</button></div>
     <div class="row" style="margin-top:7px"><button id="rotatePdf">↻ Повернуть 90°</button><button id="clearRegion">Сбросить область</button></div>
-    <div class="aiFlow"><div class="aiFlowTitle">🤖 AI-контур для Stock Removal</div><div class="small muted">Загрузите PDF, нажмите «Выбрать область», обведите только нужный продольный профиль и запустите построение.</div><button id="aiBuildRegion" class="primary" style="width:100%;margin-top:8px">Построить контур из выбранной области</button><div id="aiRegionStatus" class="small aiStatus">OpenAI проверит размеры и подготовит X/Z. Перед стойкой контур всё равно подтверждает оператор.</div></div>
+    <div class="aiFlow"><div class="aiFlowTitle">🧪 Подготовка OpenCV → AI-контур</div><div class="small muted">OpenCV очищает только выбранную область. GPT получает подготовленное изображение, а не весь PDF.</div>
+      <div class="opencvOptions" style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <label class="small"><input id="cvRemoveText" type="checkbox" checked> Удалить мелкий текст и стрелки</label>
+        <label class="small"><input id="cvRemoveHatching" type="checkbox" checked> Подавить штриховку</label>
+        <label class="small"><input id="cvStrengthen" type="checkbox" checked> Усилить линии</label>
+        <label class="small"><input id="cvCloseGaps" type="checkbox" checked> Замкнуть разрывы</label>
+      </div>
+      <div class="row" style="margin-top:8px"><button id="opencvPreview">👁 Предпросмотр OpenCV</button><button id="opencvReset">Исходное изображение</button></div>
+      <div id="opencvPreviewBox" style="display:none;margin-top:8px"><img id="opencvPreviewImage" alt="OpenCV preview" style="width:100%;max-height:280px;object-fit:contain;border:1px solid var(--line);border-radius:10px;background:#fff"><div id="opencvInfo" class="small muted" style="margin-top:5px"></div></div>
+      <button id="aiBuildRegion" class="primary" style="width:100%;margin-top:8px">OpenCV → построить AI-контур</button><div id="aiRegionStatus" class="small aiStatus">Сначала проверьте предпросмотр. Перед стойкой контур всё равно подтверждает оператор.</div></div>
     <div id="pdfInfo" class="small muted" style="margin-top:7px">Файл не загружен.</div>
   </div>
   <div class="section" id="module-geometry"><h2>🧠 Инженерная геометрия • Drawing Intelligence</h2>
@@ -231,7 +240,7 @@ button:hover{transform:translateY(-1px);border-color:rgba(99,164,255,.55);box-sh
 <script>
 const OP_LABELS={face:'Торцевание',turn_rough:'Черновое точение',turn_finish:'Чистовое точение',bore_rough:'Черновая расточка',bore_finish:'Чистовая расточка',drill:'Сверление',groove:'Канавка',part:'Отрезка',thread_od:'Наружная резьба',thread_id:'Внутренняя резьба',mill:'Фрезерование'};
 const DEFAULTS={face:[120,.18,1.5],turn_rough:[130,.25,2],turn_finish:[170,.10,.3],bore_rough:[100,.18,1],bore_finish:[140,.08,.25],drill:[70,.12,0],groove:[90,.08,0],part:[75,.06,0],thread_od:[45,1.5,0],thread_id:[35,1.5,0],mill:[120,300,1]};
-const state={aiRegion:null,workMode:'turn',geometryElements:[],recognizedDimensions:null,stockGuide:null,mode:'draw',pdfImage:null,pdfFile:null,pdfVisible:true,pdfCandidate:[],candidateConfidence:'low',dimensionEntities:[],cropRect:null,cropStart:null,regionApplied:false,pdfMeta:null,rotation:0,pointsPx:[],scalePxMm:null,origin:null,calibration:[],operations:[],result:null,view:{scale:1,ox:0,oy:0},activeOp:null,machine:null,turret:Array.from({length:15},(_,i)=>({station:i+1,tool:'',holder:'',insert:'',offset:'D1',live:false}))};
+const state={opencvPreview:null,aiRegion:null,workMode:'turn',geometryElements:[],recognizedDimensions:null,stockGuide:null,mode:'draw',pdfImage:null,pdfFile:null,pdfVisible:true,pdfCandidate:[],candidateConfidence:'low',dimensionEntities:[],cropRect:null,cropStart:null,regionApplied:false,pdfMeta:null,rotation:0,pointsPx:[],scalePxMm:null,origin:null,calibration:[],operations:[],result:null,view:{scale:1,ox:0,oy:0},activeOp:null,machine:null,turret:Array.from({length:15},(_,i)=>({station:i+1,tool:'',holder:'',insert:'',offset:'D1',live:false}))};
 const $=id=>document.getElementById(id);const canvas=$('canvas'),ctx=canvas.getContext('2d');
 document.querySelectorAll('[data-jump]').forEach(btn=>btn.onclick=()=>{document.querySelectorAll('[data-jump]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const el=$('module-'+btn.dataset.jump);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})});
 
@@ -378,19 +387,41 @@ function selectedRegionBlob(){
     c.toBlob(blob=>blob?resolve(blob):reject(new Error('Не удалось подготовить выбранную область.')),'image/png',0.96);
   });
 }
+function appendCvOptions(fd){
+  fd.append('use_opencv','true');
+  fd.append('remove_text',$('cvRemoveText').checked?'true':'false');
+  fd.append('remove_hatching',$('cvRemoveHatching').checked?'true':'false');
+  fd.append('strengthen_lines',$('cvStrengthen').checked?'true':'false');
+  fd.append('close_gaps',$('cvCloseGaps').checked?'true':'false');
+}
+async function previewOpenCv(){
+  const box=$('opencvPreviewBox'),info=$('opencvInfo');
+  try{
+    const blob=await selectedRegionBlob();
+    info.textContent='OpenCV обрабатывает выбранную область…';box.style.display='block';$('opencvPreview').disabled=true;
+    const fd=new FormData();fd.append('image',blob,'drawing-region.png');fd.append('telegram_id',$('telegramId').value||0);appendCvOptions(fd);
+    const res=await fetch('/api/v1/client/opencv/preview',{method:'POST',body:fd});const data=await res.json();if(!res.ok)throw new Error(data.detail||'Ошибка OpenCV');
+    state.opencvPreview=data;$('opencvPreviewImage').src=data.comparison_image_data_url;
+    const d=data.diagnostics||{};info.textContent=`Слева исходник, справа то, что увидит GPT. Удалено мелких компонентов: ${d.removed_small_components||0}; пикселей штриховки: ${d.removed_hatch_pixels||0}.`;
+  }catch(err){box.style.display='block';info.textContent='Ошибка: '+err.message}finally{$('opencvPreview').disabled=false}
+}
+$('opencvPreview').onclick=previewOpenCv;
+$('opencvReset').onclick=()=>{state.opencvPreview=null;$('opencvPreviewBox').style.display='none';$('opencvPreviewImage').removeAttribute('src');$('opencvInfo').textContent=''};
+['cvRemoveText','cvRemoveHatching','cvStrengthen','cvCloseGaps'].forEach(id=>$(id).onchange=()=>{state.opencvPreview=null;$('opencvInfo').textContent='Настройки изменены. Обновите предпросмотр.'});
+
 async function buildAiRegion(){
   const status=$('aiRegionStatus');
   if(state.workMode!=='turn')return alert('AI Stock Removal сейчас предназначен для токарного профиля X/Z.');
   try{
-    const blob=await selectedRegionBlob();status.className='small aiStatus busy';status.textContent='OpenAI читает размеры и строит X/Z…';$('aiBuildRegion').disabled=true;
-    const fd=new FormData();fd.append('image',blob,'drawing-region.png');fd.append('telegram_id',$('telegramId').value||0);fd.append('profile_type',$('profileType').value);fd.append('x_mode',$('stockXMode').value);
+    const blob=await selectedRegionBlob();status.className='small aiStatus busy';status.textContent='OpenCV очищает область, затем GPT строит X/Z…';$('aiBuildRegion').disabled=true;
+    const fd=new FormData();fd.append('image',blob,'drawing-region.png');fd.append('telegram_id',$('telegramId').value||0);fd.append('profile_type',$('profileType').value);fd.append('x_mode',$('stockXMode').value);appendCvOptions(fd);
     const res=await fetch('/api/v1/client/ai/region',{method:'POST',body:fd});const data=await res.json();if(!res.ok)throw new Error(data.detail||'Ошибка AI-анализа');
     const pts=Array.isArray(data.contour_xz_mm)?data.contour_xz_mm:[];if(pts.length<2)throw new Error('AI не вернул достаточный контур.');
     if(data.stock_diameter_mm)$('stockD').value=data.stock_diameter_mm;if(data.stock_length_mm)$('stockL').value=data.stock_length_mm;
     state.scalePxMm=null;state.origin=null;ensureManualFrame();state.pointsPx=pts.map(p=>machineToPixel({x:Number(p.x),z:Number(p.z)})).filter(Boolean);state.aiRegion=data;state.candidateConfidence=data.confidence||'low';
     state.dimensionEntities=(data.dimensions||[]).map(normalizeDimensionEntity);renderDimensionReview();syncContourText();draw();$('operatorConfirmed').checked=false;
     const issues=[...(data.warnings||[]),...(data.questions||[]).map(q=>'Нужно уточнить: '+q)];
-    status.className='small aiStatus '+(data.confidence==='high'?'ok':'warn');status.textContent=`Готово: ${pts.length} точек, уверенность ${data.confidence||'low'}. ${data.summary||''}${issues.length?'\n'+issues.join('\n'):''}`;
+    status.className='small aiStatus '+(data.confidence==='high'?'ok':'warn');const cv=data.opencv_diagnostics||{};status.textContent=`Готово: ${pts.length} точек, уверенность ${data.confidence||'low'}. OpenCV: удалено ${cv.removed_small_components||0} мелких элементов. ${data.summary||''}${issues.length?'\n'+issues.join('\n'):''}`;
     $('stockGuideStatus').textContent='AI-контур построен. Проверьте таблицу X/Z, размеры и ноль, затем поставьте галочку подтверждения.';
     $('module-contour').scrollIntoView({behavior:'smooth',block:'start'});
   }catch(err){status.className='small aiStatus warn';status.textContent='Ошибка: '+err.message;}finally{$('aiBuildRegion').disabled=false}
@@ -461,7 +492,7 @@ updateWorkMode();renderContourTable();addOperation('turn_rough');addOperation('t
 window.addEventListener("DOMContentLoaded",()=>{
  const app=document.querySelector(".app"), side=app?.querySelector("aside.panel"), main=app?.querySelector("main.canvasWrap"), results=app?.querySelector("section.results");
  if(!app||!side||!main||!results)return;
- const versionBadge=document.querySelector(".badge"); if(versionBadge) versionBadge.textContent="v3.0 AI Edition";
+ const versionBadge=document.querySelector(".badge"); if(versionBadge) versionBadge.textContent="v3.1 OpenCV + AI";
  const contour=document.getElementById("module-contour");
  if(contour){contour.classList.add("panel","v270-contour-panel");app.insertBefore(contour,main)}
  const sections=[...side.querySelectorAll(":scope > .section")];
