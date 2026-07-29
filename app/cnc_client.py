@@ -155,7 +155,7 @@ def _rough_outer_paths(
     paths: list[list[Point]] = []
     for pass_no in range(1, passes + 1):
         level = max(target_min, stock_diameter - diameter_step * pass_no)
-        path = [Point(z=p.z, x=max(level, p.x + allowance)) for p in contour]
+        path = [Point(z=p.z, x=min(stock_diameter, max(level, p.x + allowance))) for p in contour]
         paths.append(_dedupe_path(path))
     return paths
 
@@ -184,6 +184,45 @@ def _dedupe_path(points: list[Point]) -> list[Point]:
         if not result or abs(result[-1].z - point.z) > 1e-6 or abs(result[-1].x - point.x) > 1e-6:
             result.append(point)
     return result
+
+
+def _manual_stock_summary(
+    contour: list[Point], stock_diameter: float, rough_passes: int
+) -> dict[str, float | int]:
+    """Estimate removed material for an outer turning contour.
+
+    The profile is treated as a body of revolution around Z. Linear segments
+    are integrated exactly for D(z)^2; vertical shoulders have zero axial
+    length and therefore add no volume themselves.
+    """
+    if not contour or stock_diameter <= 0:
+        return {
+            "axial_span_mm": 0.0,
+            "max_radial_removal_mm": 0.0,
+            "removal_volume_cm3": 0.0,
+            "rough_passes": max(0, int(rough_passes)),
+        }
+
+    volume_mm3 = 0.0
+    for left, right in zip(contour, contour[1:]):
+        length = abs(right.z - left.z)
+        if length <= 1e-9:
+            continue
+        d1 = min(stock_diameter, max(0.0, left.x))
+        d2 = min(stock_diameter, max(0.0, right.x))
+        stock_integral = stock_diameter**2 * length
+        profile_integral = length * (d1**2 + d1 * d2 + d2**2) / 3.0
+        volume_mm3 += max(0.0, math.pi * 0.25 * (stock_integral - profile_integral))
+
+    axial_span = max(point.z for point in contour) - min(point.z for point in contour)
+    min_profile_diameter = min(point.x for point in contour)
+    max_radial = max(0.0, (stock_diameter - min_profile_diameter) / 2.0)
+    return {
+        "axial_span_mm": round(axial_span, 3),
+        "max_radial_removal_mm": round(max_radial, 3),
+        "removal_volume_cm3": round(volume_mm3 / 1000.0, 3),
+        "rough_passes": max(0, int(rough_passes)),
+    }
 
 
 def _safe_comment(value: str) -> str:
@@ -244,6 +283,7 @@ def generate_engineering_plan(payload: dict[str, Any]) -> dict[str, Any]:
     contour_data = payload.get("contour") or {}
     contour = normalize_contour(contour_data.get("points") or [])
     contour_mode = str(contour_data.get("mode") or "outer")
+    contour_source = str(contour_data.get("source") or "operator")
     operations = payload.get("operations") or []
     if not operations:
         raise ClientValidationError("Добавьте хотя бы одну операцию.")
@@ -266,8 +306,13 @@ def generate_engineering_plan(payload: dict[str, Any]) -> dict[str, Any]:
     stock_removal: list[dict[str, Any]] = []
     warnings: list[str] = [
         "Автоматически созданный G-код нельзя запускать без проверки траектории, нулей, коррекций и зажимов.",
-        "Распознавание PDF является полуавтоматическим: размер и контур должен подтвердить оператор.",
+        "Контур и размеры должен подтвердить оператор. Ручной маркер не заменяет проверку чертежа и симуляцию стойки.",
     ]
+
+    if contour_mode == "outer" and any(point.x > stock_diameter + 1e-6 for point in contour):
+        warnings.append("Часть готового наружного контура больше диаметра заготовки. Проверьте X и фактический Ø заготовки.")
+    if contour_mode == "outer" and any(point.x < 0 for point in contour):
+        warnings.append("В наружном контуре найден отрицательный X. Проверьте диаметрный режим.")
 
     for index, operation in enumerate(operations):
         op_type = str(operation.get("type") or operation.get("operation_type") or "")
@@ -381,6 +426,12 @@ def generate_engineering_plan(payload: dict[str, Any]) -> dict[str, Any]:
     if not toolpaths and not steps:
         raise ClientValidationError("Не удалось сформировать ни одной операции.")
 
+    rough_passes = max(
+        (int(card.get("fields", {}).get("Количество проходов", 0)) for card in stock_removal),
+        default=0,
+    )
+    manual_stock_summary = _manual_stock_summary(contour, stock_diameter, rough_passes)
+
     return {
         "title": title,
         "controller": controller,
@@ -390,6 +441,8 @@ def generate_engineering_plan(payload: dict[str, Any]) -> dict[str, Any]:
             "length": stock_length,
         },
         "contour_mode": contour_mode,
+        "contour_source": contour_source,
+        "manual_stock_summary": manual_stock_summary,
         "final_contour": [point.to_dict() for point in contour],
         "toolpaths": toolpaths,
         "stock_removal": stock_removal,
@@ -736,117 +789,4 @@ def analyze_image_bytes(data: bytes, rotation: int = 0, profile_type: str = "out
             "Фото не содержит текстового слоя: размеры необходимо подтвердить вручную.",
             "Перед построением задайте масштаб по известному размеру.",
         ],
-    }
-
-
-def preprocess_drawing_region_bytes(
-    data: bytes,
-    *,
-    remove_text: bool = True,
-    remove_hatching: bool = True,
-    strengthen_lines: bool = True,
-    close_gaps: bool = True,
-) -> dict[str, Any]:
-    """OpenCV preparation for technical drawing regions.
-
-    The result is a conservative cleaned image for AI interpretation. It never
-    converts pixels into machine dimensions and therefore cannot replace scale
-    calibration or operator confirmation.
-    """
-    if not data or len(data) > 12 * 1024 * 1024:
-        raise ClientValidationError("Выбранная область пуста или больше 12 МБ.")
-    try:
-        import cv2  # type: ignore
-        import numpy as np  # type: ignore
-    except ImportError as exc:
-        raise ClientValidationError("На сервере не установлен OpenCV.") from exc
-
-    src = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
-    if src is None:
-        raise ClientValidationError("OpenCV не смог прочитать выбранную область.")
-    h, w = src.shape[:2]
-    if min(h, w) < 40:
-        raise ClientValidationError("Выбранная область слишком маленькая для OpenCV.")
-
-    norm = cv2.normalize(src, None, 0, 255, cv2.NORM_MINMAX)
-    norm = cv2.GaussianBlur(norm, (3, 3), 0)
-    ink = cv2.adaptiveThreshold(
-        norm, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY_INV, 31, 11,
-    )
-
-    removed_small = 0
-    if remove_text:
-        # Remove compact connected components typical of digits, letters and
-        # arrowheads. Long outline segments are deliberately retained.
-        count, labels, stats, _ = cv2.connectedComponentsWithStats(ink, 8)
-        keep = np.zeros_like(ink)
-        max_small_h = max(10, int(h * 0.055))
-        max_small_w = max(12, int(w * 0.075))
-        for idx in range(1, count):
-            x, y, cw, ch, area = stats[idx]
-            aspect = cw / max(ch, 1)
-            compact = cw <= max_small_w and ch <= max_small_h and area < max(180, int(w*h*0.0012))
-            arrow_like = area < max(90, int(w*h*0.00045)) and 0.35 < aspect < 3.2
-            if compact or arrow_like:
-                removed_small += 1
-                continue
-            keep[labels == idx] = 255
-        ink = keep
-
-    removed_hatch_pixels = 0
-    if remove_hatching:
-        # Detect repeated thin diagonal strokes with morphology. Kernels cover
-        # both common hatch directions; subtraction is intentionally mild.
-        length = max(9, min(31, int(min(h, w) * 0.035)))
-        diag1 = np.eye(length, dtype=np.uint8)
-        diag2 = np.fliplr(diag1)
-        hatch1 = cv2.morphologyEx(ink, cv2.MORPH_OPEN, diag1)
-        hatch2 = cv2.morphologyEx(ink, cv2.MORPH_OPEN, diag2)
-        hatch = cv2.bitwise_or(hatch1, hatch2)
-        # Preserve strokes that are also part of strong horizontal/vertical outlines.
-        hk = cv2.getStructuringElement(cv2.MORPH_RECT, (max(9, length), 1))
-        vk = cv2.getStructuringElement(cv2.MORPH_RECT, (1, max(9, length)))
-        structural = cv2.bitwise_or(
-            cv2.morphologyEx(ink, cv2.MORPH_OPEN, hk),
-            cv2.morphologyEx(ink, cv2.MORPH_OPEN, vk),
-        )
-        hatch = cv2.bitwise_and(hatch, cv2.bitwise_not(cv2.dilate(structural, np.ones((3,3), np.uint8))))
-        removed_hatch_pixels = int(cv2.countNonZero(hatch))
-        ink = cv2.bitwise_and(ink, cv2.bitwise_not(hatch))
-
-    if close_gaps:
-        ink = cv2.morphologyEx(
-            ink, cv2.MORPH_CLOSE,
-            cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)), iterations=1,
-        )
-    if strengthen_lines:
-        ink = cv2.dilate(ink, cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2)), iterations=1)
-
-    cleaned = cv2.bitwise_not(ink)
-    # Side-by-side diagnostic preview helps the operator see exactly what GPT gets.
-    original_bgr = cv2.cvtColor(src, cv2.COLOR_GRAY2BGR)
-    cleaned_bgr = cv2.cvtColor(cleaned, cv2.COLOR_GRAY2BGR)
-    divider = np.full((h, 4, 3), 90, dtype=np.uint8)
-    comparison = np.hstack([original_bgr, divider, cleaned_bgr])
-
-    ok1, enc_clean = cv2.imencode('.png', cleaned)
-    ok2, enc_compare = cv2.imencode('.png', comparison)
-    if not ok1 or not ok2:
-        raise ClientValidationError("OpenCV не смог сформировать предпросмотр.")
-    return {
-        "cleaned_bytes": enc_clean.tobytes(),
-        "cleaned_image_data_url": "data:image/png;base64," + base64.b64encode(enc_clean.tobytes()).decode("ascii"),
-        "comparison_image_data_url": "data:image/png;base64," + base64.b64encode(enc_compare.tobytes()).decode("ascii"),
-        "diagnostics": {
-            "algorithm": "opencv-drawing-clean-v1",
-            "width": w,
-            "height": h,
-            "removed_small_components": removed_small,
-            "removed_hatch_pixels": removed_hatch_pixels,
-            "remove_text": remove_text,
-            "remove_hatching": remove_hatching,
-            "strengthen_lines": strengthen_lines,
-            "close_gaps": close_gaps,
-        },
     }
