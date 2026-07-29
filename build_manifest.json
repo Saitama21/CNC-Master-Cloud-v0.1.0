@@ -1,5 +1,5 @@
 {
-  "version": "2.3.0-pro-stainless",
+  "version": "2.5.0",
   "files": 49,
   "sha256": {
     ".env.example": "5fdf2b79a7d192aff3c02a429feee548de51f3806253b742c827eaeb88198238",
@@ -57,5 +57,7 @@
     "metal_brand_plate",
     "stainless_3d_logo",
     "transparent_logo_asset"
-  ]
+  ],
+  "catalog_items": 30039,
+  "feature": "Ukraine Tool Market Catalog"
 }

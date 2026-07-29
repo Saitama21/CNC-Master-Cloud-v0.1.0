@@ -34,7 +34,9 @@ CATEGORY_LABELS = {
     "groove": "Канавки и отрезка",
     "thread": "Резьбовой инструмент",
     "drill": "Сверла",
+    "drill_insert": "Пластины для корпусных сверл",
     "mill": "Фрезы",
+    "mill_insert": "Фрезерные пластины",
     "holder": "Патроны и оснастка",
 }
 
@@ -399,6 +401,128 @@ def _holders(items: list[CatalogItem]) -> None:
         counter += 1
 
 
+UKRAINE_MARKET_SOURCES = (
+    "ISCAR Ukraine — https://webshop.iscartool.com.ua/",
+    "ZCC-CT Ukraine — https://zccct.com.ua/",
+    "TaeguTec Ukraine — https://taegutec.com.ua/",
+    "KDM Group — https://kdmgroup.com.ua/",
+    "Океан Трейд — https://ocean.biz.ua/",
+    "Фрактальность — https://fractalnost.com.ua/",
+)
+
+def _market_source(index: int) -> str:
+    return UKRAINE_MARKET_SOURCES[index % len(UKRAINE_MARKET_SOURCES)] + "; наличие и цену проверять у продавца"
+
+def _expanded_market_catalog(items: list[CatalogItem]) -> None:
+    """Расширенный справочник ISO-семейств, реально встречающихся у украинских поставщиков.
+
+    Это не снимок складских остатков: позиции описаны на уровне стандартизованного семейства/типоразмера.
+    """
+    n = 1
+    # Наружные державки: основные ISO-семейства, размеры и исполнения.
+    holder_families = {
+        "PCLNR": "CNMG", "PCLNL": "CNMG", "DCLNR": "CNMG", "DCLNL": "CNMG",
+        "MCLNR": "CNMG", "MCLNL": "CNMG", "MWLNR": "WNMG", "MWLNL": "WNMG",
+        "PDJNR": "DNMG", "PDJNL": "DNMG", "MDJNR": "DNMG", "MDJNL": "DNMG",
+        "MTJNR": "TNMG", "MTJNL": "TNMG", "PTGNR": "TNMG", "PTGNL": "TNMG",
+        "MVJNR": "VNMG", "MVJNL": "VNMG", "SVJCR": "VCMT/VBMT", "SVJCL": "VCMT/VBMT",
+        "PSBNR": "SNMG", "PSBNL": "SNMG", "SCLCR": "CCMT", "SCLCL": "CCMT",
+        "SDJCR": "DCMT", "SDJCL": "DCMT", "STGCR": "TCMT", "STGCL": "TCMT",
+        "SRDCN": "RCMT", "SSSCR": "SCMT", "SSSCL": "SCMT",
+    }
+    size_suffix = {12:"F", 16:"H", 20:"K", 25:"M", 32:"P", 40:"R"}
+    insert_suffix = {"CNMG":"12","WNMG":"08","DNMG":"15","TNMG":"16","VNMG":"16","VCMT/VBMT":"16","SNMG":"12","CCMT":"09","DCMT":"11","TCMT":"16","RCMT":"12","SCMT":"12"}
+    for fam, ins in holder_families.items():
+        for shank in size_suffix:
+            code=f"{fam} {shank}{shank}{size_suffix[shank]}{insert_suffix[ins]}"
+            _add(items,key=f"UAH{n:06d}",category="turn_holder",subcategory=fam,name=f"Державка {fam} {shank}×{shank}",code=code,operation_tags=("turn_rough","turn_finish","face"),iso_groups=ISO_ALL,dimensions=f"Хвостовик {shank}×{shank} мм",description="Стандартная ISO-державка для наружного точения/торцевания",compatibility=f"Пластины {ins}; направление и угол в плане определяются кодом",grade_hint="Проверить высоту центра, направление подачи и допустимый вылет",source=_market_source(n)); n+=1
+    # Расточные державки: сталь, твердосплав, антивибрационные, разные головки.
+    boring_heads={"SCLCR":"CCMT","SDUCR":"DCMT","STFCR":"TCMT","SVUCR":"VCMT","SWLNR":"WNMG","S16Q-SIR":"16IR","S16Q-SER":"16ER","MGIVR":"канавочная пластина"}
+    for material, reach in (("S","3D"),("A","5D"),("C","7D"),("DAMP","10D")):
+        for dia in (6,8,10,12,16,20,25,32,40,50):
+            for head, ins in boring_heads.items():
+                code=f"{material}{dia:02d}-{head}"
+                _add(items,key=f"UAB{n:06d}",category="boring_bar",subcategory=material,name=f"Расточная державка {head} Ø{dia}",code=code,operation_tags=("bore", "thread" if "IR" in head else "bore"),iso_groups=ISO_ALL,dimensions=f"Хвостовик Ø{dia} мм; ориентировочный вылет до {reach}",description="Внутренняя обработка отверстий; исполнение зависит от головки",compatibility=f"{ins}",grade_hint="Минимальный диаметр отверстия и длину вылета сверять по каталогу производителя",source=_market_source(n)); n+=1
+    # Токарные пластины: распространённые формы, размеры, радиусы и группы материалов.
+    insert_sizes={
+      "CNMG":("120402","120404","120408","120412","160608"),"WNMG":("060404","080404","080408","080412"),
+      "DNMG":("110404","150404","150408","150412"),"TNMG":("160404","160408","220408"),
+      "VNMG":("160402","160404","160408"),"SNMG":("090304","120404","120408","150612"),
+      "CCMT":("060202","060204","09T302","09T304","09T308","120404"),
+      "DCMT":("070202","070204","11T302","11T304","11T308"),
+      "TCMT":("090202","110202","110204","16T304"),"VCMT":("110302","110304","160404"),
+      "VBMT":("110202","110204","160404"),"SCMT":("09T304","120404","120408"),
+      "RCMT":("0602","0803","1003","1204","1606"),"CPMT":("090304","120408"),
+    }
+    geos=("F","PF","MF","M","PM","MM","R","PR","MR")
+    for fam,sizes in insert_sizes.items():
+        for size in sizes:
+            for geo in geos:
+                for grp in ISO_ALL:
+                    code=f"{fam} {size}-{geo} ({grp})"
+                    _add(items,key=f"UAI{n:06d}",category="turn_insert",subcategory=fam,name=f"Пластина {fam} {size}, геометрия {geo}, ISO {grp}",code=code,operation_tags=("turn_rough","turn_finish","face","bore"),iso_groups=(grp,),dimensions=f"Типоразмер {size}; стружколом {geo}",description="ISO-семейство сменной твердосплавной пластины; конкретная марка сплава зависит от производителя",compatibility=f"Державка под {fam}",grade_hint=f"Выбирать покрытие и сплав для ISO {grp}; радиус вершины зашифрован в размере",source=_market_source(n)); n+=1
+    # Канавка/отрезка: наружная, внутренняя, торцевая, лезвия и пластины.
+    groove_systems=("MGEHR","MGEHL","MGIVR","MGIVL","MFGHR","MFGHL","QEHD","DGTR","TTER","TDIHR","TDIHL")
+    groove_inserts=("MGMN","MGR","MGL","GTN","DGN","TAG","TDXU","TDIT","GIPI","GIPY")
+    for sys in groove_systems:
+        for shank in (12,16,20,25,32):
+            for width in (1.0,1.5,2.0,2.5,3.0,4.0,5.0,6.0,8.0):
+                _add(items,key=f"UAGH{n:06d}",category="groove",subcategory="holder",name=f"Державка {sys} {shank} мм, ширина {width:g}",code=f"{sys} {shank}{shank}-{width:g}",operation_tags=("groove",),iso_groups=ISO_ALL,dimensions=f"Хвостовик {shank} мм; ширина {width:g} мм",description="Державка для наружной, внутренней, торцевой канавки либо отрезки в зависимости от системы",compatibility="Пластина соответствующей системы и ширины",grade_hint="Проверить максимальную глубину, направление и боковой зазор",source=_market_source(n)); n+=1
+    for fam in groove_inserts:
+        for width in (1.0,1.5,2.0,2.5,3.0,4.0,5.0,6.0,8.0):
+            for grp in ISO_ALL:
+                _add(items,key=f"UAGI{n:06d}",category="groove",subcategory="insert",name=f"Пластина {fam} {width:g} мм ISO {grp}",code=f"{fam}-{int(width*100):03d}-{grp}",operation_tags=("groove",),iso_groups=(grp,),dimensions=f"Ширина {width:g} мм",description="Канавочная/отрезная пластина; геометрия зависит от системы",compatibility=f"Корпус/державка системы {fam}",grade_hint=f"Сплав под ISO {grp}; для отрезки важны подача СОЖ и жёсткость",source=_market_source(n)); n+=1
+    # Резьба: ISO, UN, Whitworth, трапеция, ACME, NPT/BSP.
+    profiles=(("ISO",60),("UN",60),("AG60",60),("W",55),("BSP",55),("NPT",60),("TR",30),("ACME",29))
+    for side in ("ER","EL","IR","IL"):
+        for size in (6,8,11,16,22,27):
+            for prof,angle in profiles:
+                for pitch in (0.5,0.75,1.0,1.25,1.5,1.75,2.0,2.5,3.0,3.5,4.0,5.0,6.0):
+                    _add(items,key=f"UATR{n:06d}",category="thread",subcategory="insert",name=f"Резьбовая пластина {size}{side} {pitch:g}{prof}",code=f"{size}{side} {pitch:g}{prof}",operation_tags=("thread",),iso_groups=ISO_ALL,dimensions=f"Профиль {prof} {angle}°; шаг {pitch:g}",description="Полный/частичный профиль зависит от маркировки производителя",compatibility=f"Державка под пластину {size}{side}",grade_hint="Проверить шаг, направление, наружное/внутреннее исполнение",source=_market_source(n)); n+=1
+    for kind in ("SER","SEL","SIR","SIL"):
+        for shank in (10,12,16,20,25,32,40):
+            for ins in (11,16,22,27):
+                _add(items,key=f"UATH{n:06d}",category="thread",subcategory="holder",name=f"Резьбовая державка {kind} {shank}, пластина {ins}",code=f"{kind} {shank}{shank}K{ins}",operation_tags=("thread",),iso_groups=ISO_ALL,dimensions=f"Размер {shank} мм; пластина {ins}",description="Наружная/внутренняя правая/левая резьбовая державка",compatibility=f"Пластины {ins}ER/EL/IR/IL",grade_hint="Исполнение кода сверять по фактическому направлению резьбы",source=_market_source(n)); n+=1
+    # Сверла и сменные головки/пластины.
+    for kind,label in (("HSS","HSS-R сверло"),("HSS-G","Шлифованное HSS сверло"),("HSS-CO","Кобальтовое сверло"),("CARBIDE","Твердосплавное сверло"),("STEP","Ступенчатое сверло"),("SPOT","Центровочное/spot сверло")):
+        for d10 in range(10, 501, 5):
+            d=d10/10
+            for ld in ((3,5,8,12) if kind=="CARBIDE" else (3,5)):
+                _add(items,key=f"UADR{n:06d}",category="drill",subcategory=kind,name=f"{label} Ø{d:g}, {ld}D",code=f"{kind}-{d:g}-{ld}D",operation_tags=("drill",),iso_groups=ISO_ALL,dimensions=f"Ø{d:g} мм; длина {ld}D",description="Сверло общего/производственного назначения",compatibility="Цанговый, гидро-, термо- или сверлильный патрон",grade_hint="Выбирать геометрию, покрытие и СОЖ по материалу",source=_market_source(n)); n+=1
+    drill_families=("U-DRILL","SPADE","SUMOCHAM","CHAMDRILL","CROWNLOC","MAGICDRILL","DRILLMEISTER","KSEM")
+    for fam in drill_families:
+        for dia in range(12,81):
+            for ld in (2,3,4,5,8):
+                _add(items,key=f"UACD{n:06d}",category="drill",subcategory="indexable",name=f"Корпусное сверло {fam} Ø{dia}, {ld}D",code=f"{fam}-{dia}-{ld}D",operation_tags=("drill",),iso_groups=ISO_ALL,dimensions=f"Ø{dia} мм; {ld}D",description="Корпусное сверло со сменными пластинами либо головкой",compatibility=f"Сменные элементы системы {fam}",grade_hint="Проверить хвостовик, давление внутренней СОЖ, центральную/периферийную позицию",source=_market_source(n)); n+=1
+    for fam in drill_families:
+        for size in range(12,81):
+            for pos in ("CENTER","PERIPHERY","HEAD"):
+                for grp in ISO_ALL:
+                    _add(items,key=f"UADI{n:06d}",category="drill_insert",subcategory=fam,name=f"Сменный элемент {fam} {size} {pos} ISO {grp}",code=f"{fam}-{size}-{pos}-{grp}",operation_tags=("drill",),iso_groups=(grp,),dimensions=f"Для номинального Ø{size}; позиция {pos}",description="Пластина или сменная сверлильная головка; код является поисковым семейством",compatibility=f"Корпусное сверло {fam} соответствующего диаметра",grade_hint="Центральные и периферийные пластины часто имеют разные геометрии и сплавы",source=_market_source(n)); n+=1
+    # Фрезы и фрезерные пластины.
+    mill_fams=(("ENDMILL","Концевая"),("BALL","Сферическая"),("CORNER-R","Радиусная"),("ROUGH","Черновая"),("CHAMFER","Фасочная"),("THREADMILL","Резьбофреза"))
+    for fam,label in mill_fams:
+        for d10 in range(10, 321, 5):
+            d=d10/10
+            for z in (2,3,4,5,6):
+                _add(items,key=f"UAML{n:06d}",category="mill",subcategory="solid",name=f"{label} твердосплавная фреза Ø{d:g} Z{z}",code=f"{fam}-{d:g}-Z{z}",operation_tags=("mill",),iso_groups=ISO_ALL,dimensions=f"Ø{d:g} мм; Z{z}",description="Монолитная твердосплавная фреза",compatibility="Цанга/гидропатрон/термопатрон",grade_hint="Число зубьев, угол спирали и покрытие выбирать по материалу",source=_market_source(n)); n+=1
+    body_fams=("APKT","APMT","SEKT","SEHT","ADKT","R390","LNMU","ONMU","SDMT","RDMT","RCMT","XOMX","SOMT","BLMP","AXMT")
+    for fam in body_fams:
+        for dia in (16,20,25,32,40,50,63,80,100,125,160):
+            for z in (2,3,4,5,6,8,10):
+                _add(items,key=f"UAMB{n:06d}",category="mill",subcategory="indexable",name=f"Корпусная фреза под {fam} Ø{dia} Z{z}",code=f"MILL-{fam}-{dia}-Z{z}",operation_tags=("mill",),iso_groups=ISO_ALL,dimensions=f"Ø{dia} мм; Z{z}",description="Концевая/торцевая/высокоподачная корпусная фреза в зависимости от семейства",compatibility=f"Фрезерные пластины {fam}",grade_hint="Проверить посадку, максимальные обороты, момент приводного блока",source=_market_source(n)); n+=1
+    for fam in body_fams:
+        for size in (6,8,9,10,11,12,15,16,18,20):
+            for geo in ("P","M","R","ALU","HFM"):
+                for grp in ISO_ALL:
+                    _add(items,key=f"UAMI{n:06d}",category="mill_insert",subcategory=fam,name=f"Фрезерная пластина {fam} {size} {geo} ISO {grp}",code=f"{fam}-{size}-{geo}-{grp}",operation_tags=("mill",),iso_groups=(grp,),dimensions=f"Семейство {fam}; размер {size}; геометрия {geo}",description="Сменная пластина для корпусной фрезы",compatibility=f"Корпус фрезы под {fam}",grade_hint=f"Марка сплава для ISO {grp}; точный размер и винт сверять по корпусу",source=_market_source(n)); n+=1
+    # Оснастка: интерфейсы и типоразмеры.
+    systems=("ER11","ER16","ER20","ER25","ER32","ER40","WELDON","HYDRO","SHRINK","SIDELOCK","MORSE","DRILL-CHUCK","VDI20","VDI30","VDI40","VDI50","BMT45","BMT55","BMT65","CAT40","BT30","BT40","BT50","HSK-A40","HSK-A63","CAPTO-C4","CAPTO-C5","CAPTO-C6")
+    for sys in systems:
+        for size in (4,6,8,10,12,16,20,25,32,40):
+            _add(items,key=f"UAHD{n:06d}",category="holder",subcategory=sys,name=f"Оснастка {sys}, размер {size}",code=f"{sys}-{size}",operation_tags=("drill","mill","turn_rough","turn_finish"),iso_groups=ISO_ALL,dimensions=f"Система {sys}; размер {size}",description="Инструментальная/станочная оснастка, патрон, блок, втулка или оправка",compatibility="Интерфейс станка и хвостовик инструмента должны совпадать",grade_hint="Проверить биение, балансировку, максимальные обороты и габариты револьвера",source=_market_source(n)); n+=1
+
+
 @lru_cache(maxsize=1)
 def catalog() -> tuple[CatalogItem, ...]:
     items: list[CatalogItem] = []
@@ -410,6 +534,7 @@ def catalog() -> tuple[CatalogItem, ...]:
     _drills(items)
     _mills(items)
     _holders(items)
+    _expanded_market_catalog(items)
     return tuple(items)
 
 
@@ -431,6 +556,8 @@ def search_catalog(
 ) -> list[CatalogItem]:
     items: Iterable[CatalogItem] = catalog()
     if category:
+        aliases = {"turning_holders":"turn_holder","boring_bars":"boring_bar","turning_inserts":"turn_insert","grooving_parting":"groove","threading":"thread","drills":"drill","drill_inserts":"drill_insert","mills":"mill","milling_inserts":"mill_insert","toolholding":"holder"}
+        category = aliases.get(category, category)
         items = (item for item in items if item.category == category)
     if operation:
         items = (item for item in items if operation in item.operation_tags)

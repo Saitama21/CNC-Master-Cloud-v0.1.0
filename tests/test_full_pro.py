@@ -6,7 +6,7 @@ def test_catalog_is_large_and_has_all_major_categories() -> None:
     assert catalog_count() >= 1000
     assert set(CATEGORY_LABELS) == {
         "turn_holder", "boring_bar", "turn_insert", "groove",
-        "thread", "drill", "mill", "holder",
+        "thread", "drill", "drill_insert", "mill", "mill_insert", "holder",
     }
 
 

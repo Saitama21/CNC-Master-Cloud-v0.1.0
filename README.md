@@ -1,5 +1,5 @@
 
-## v2.4.0 — Drawing Intelligence
+## v2.5.0 — Drawing Intelligence
 
 Добавлен полуавтоматический поток PDF/фото → распознанные размеры → подтверждение оператором → инженерная геометрия → контур → Stock Removal → инструкция SINUMERIK 828D. Клиент не подставляет отсутствующие размеры и требует ручной проверки.
 # ⚙️ CNC Master Cloud ENGINEERING CLIENT v2.1.2
