@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from app.admin_ui import ADMIN_HTML
 from app.client_ui import CLIENT_HTML
 from app.cnc_client import ClientValidationError, analyze_pdf_bytes, analyze_image_bytes, generate_engineering_plan
+from app.openai_drawing import analyze_drawing_region_with_openai
 from app.catalog_data import CATEGORY_LABELS, catalog_count, get_item, search_catalog
 from app.config import settings
 from app.db import SessionLocal, get_session, init_db
@@ -155,6 +156,31 @@ async def client_analyze_pdf(
         if None not in {crop_x, crop_y, crop_w, crop_h}:
             crop = (float(crop_x), float(crop_y), float(crop_w), float(crop_h))
         return analyze_pdf_bytes(data, page_number, crop=crop, rotation=rotation, profile_type=profile_type)
+    except ClientValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/api/v1/client/ai/region", tags=["engineering-client"])
+async def client_ai_region(
+    image: UploadFile = File(...),
+    telegram_id: int = Form(default=0),
+    profile_type: str = Form(default="outer"),
+    x_mode: str = Form(default="diameter"),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    await _require_feature(session, telegram_id, "pdf_scan")
+    if image.content_type not in {"image/png", "image/jpeg", "image/webp", "application/octet-stream"}:
+        raise HTTPException(status_code=415, detail="Для AI-анализа нужна PNG, JPG или WEBP область.")
+    data = await image.read()
+    if not data or len(data) > 12 * 1024 * 1024:
+        raise HTTPException(status_code=422, detail="Выбранная область пуста или больше 12 МБ.")
+    import base64
+    mime = image.content_type if image.content_type and image.content_type.startswith("image/") else "image/png"
+    image_data_url = f"data:{mime};base64," + base64.b64encode(data).decode("ascii")
+    try:
+        return await analyze_drawing_region_with_openai(
+            image_data_url, profile_type=profile_type, x_mode=x_mode
+        )
     except ClientValidationError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
