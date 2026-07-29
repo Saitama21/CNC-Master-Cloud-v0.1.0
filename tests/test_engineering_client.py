@@ -40,6 +40,30 @@ def test_contour_is_sorted_from_front_to_back():
     assert points[-1].z == -20
 
 
+
+def test_contour_preserves_equal_z_shoulder_points():
+    points = normalize_contour([
+        {"z": 0, "x": 90},
+        {"z": -16, "x": 90},
+        {"z": -16, "x": 125},
+        {"z": -33, "x": 125},
+    ])
+    assert [(point.x, point.z) for point in points] == [
+        (90, 0), (90, -16), (125, -16), (125, -33)
+    ]
+
+
+def test_contour_reverses_backwards_equal_z_shoulder_points():
+    points = normalize_contour([
+        {"z": -33, "x": 125},
+        {"z": -16, "x": 125},
+        {"z": -16, "x": 90},
+        {"z": 0, "x": 90},
+    ])
+    assert [(point.x, point.z) for point in points] == [
+        (90, 0), (90, -16), (125, -16), (125, -33)
+    ]
+
 def test_spindle_rpm_respects_limit():
     assert spindle_rpm(300, 10, 2500) == 2500
 

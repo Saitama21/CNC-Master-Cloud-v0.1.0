@@ -56,14 +56,23 @@ def normalize_contour(raw: Iterable[dict[str, Any]], *, minimum: int = 2) -> lis
     if len(points) < minimum:
         raise ClientValidationError(f"Контур должен содержать минимум {minimum} точки.")
 
-    # Collapse duplicate Z coordinates, preserving the last edited point.
-    by_z: dict[float, Point] = {}
+    # Keep equal-Z point pairs: they are vertical shoulders in an X/Z turning
+    # contour, not duplicates. Remove only consecutive identical points.
+    result: list[Point] = []
     for point in points:
-        by_z[round(point.z, 6)] = point
-    result = list(by_z.values())
-    result.sort(key=lambda point: point.z, reverse=True)
+        if not result or abs(result[-1].z - point.z) > 1e-6 or abs(result[-1].x - point.x) > 1e-6:
+            result.append(point)
     if len(result) < minimum:
         raise ClientValidationError("После удаления повторов в контуре осталось слишком мало точек.")
+
+    # The client convention is front face first (largest Z, normally Z0), then
+    # movement into the part with non-increasing Z. Reverse a completely
+    # backwards path; for a mixed order, use a stable Z sort while retaining
+    # the operator/AI order of shoulder pairs at the same Z.
+    if result[-1].z > result[0].z + 1e-6:
+        result.reverse()
+    if any(result[i + 1].z > result[i].z + 1e-6 for i in range(len(result) - 1)):
+        result.sort(key=lambda point: point.z, reverse=True)
     return result
 
 
@@ -438,7 +447,7 @@ def analyze_pdf_bytes(
                 clip = fitz.Rect(x0, y0, x1, y1)
     pix = page.get_pixmap(matrix=matrix, clip=clip, alpha=False)
     png = pix.tobytes("png")
-    text = page.get_text("text") or ""
+    text = page.get_text("text", clip=clip) or ""
     dimensions = sorted(set(re.findall(r"(?<!\d)(\d{1,4}(?:[.,]\d{1,3})?)(?:\s*(?:mm|мм))?", text, flags=re.I)))[:80]
     dimension_entities: list[dict[str, Any]] = []
     patterns = [
@@ -467,7 +476,7 @@ def analyze_pdf_bytes(
 
     candidate: list[dict[str, float]] = []
     confidence = "low"
-    diagnostics: dict[str, Any] = {"algorithm": "profile-v2", "candidates": 0}
+    diagnostics: dict[str, Any] = {"algorithm": "profile-v3-quality-gated", "candidates": 0}
     try:
         import cv2  # type: ignore
         import numpy as np  # type: ignore
@@ -617,16 +626,27 @@ def analyze_pdf_bytes(
                     huge_jumps = sum(abs(ys[i + 1] - ys[i]) > jump_limit for i in range(len(ys) - 1))
                     flat_ratio = y_span / max(x_span, 1.0)
                     diagnostics.update({"points": len(candidate), "x_span": round(x_span, 2), "y_span": round(y_span, 2), "huge_jumps": huge_jumps})
+                    vertical_ratio = y_span / max(float(height), 1.0)
+                    diagnostics["vertical_ratio"] = round(vertical_ratio, 4)
                     if x_span < width * (0.14 if crop else 0.19) or not monotonic or huge_jumps > 1 or flat_ratio < 0.004:
                         candidate = []
                         confidence = "low"
+                        diagnostics["quality_reason"] = "геометрия кандидата нестабильна"
                     else:
-                        if crop and selected_score >= 8.0 and huge_jumps == 0:
+                        # A nearly flat line in a technical drawing is frequently a dimension
+                        # or extension line. Keep it as a visible hint but never mark it high.
+                        if vertical_ratio < 0.028:
+                            confidence = "medium" if selected_score >= 6.0 else "low"
+                            diagnostics["quality_reason"] = "слишком плоский кандидат; возможна размерная линия"
+                        elif crop and selected_score >= 8.0 and huge_jumps == 0:
                             confidence = "high"
+                            diagnostics["quality_reason"] = "контур прошёл геометрическую проверку"
                         elif selected_score >= 6.0:
                             confidence = "medium"
+                            diagnostics["quality_reason"] = "нужна проверка оператором"
                         else:
                             confidence = "low"
+                            diagnostics["quality_reason"] = "низкая оценка контура"
                 else:
                     candidate = []
                     confidence = "low"
@@ -692,6 +712,11 @@ def analyze_image_bytes(data: bytes, rotation: int = 0, profile_type: str = "out
     if not ok:
         raise ClientValidationError("Не удалось подготовить изображение.")
     h, w = image.shape[:2]
+    diagnostics: dict[str, Any] = {
+        "algorithm": "raster-preview-v1",
+        "candidates": 0,
+        "quality_reason": "для фотографии нужен AI-анализ или ручная обводка",
+    }
     return {
         "page": 1,
         "page_count": 1,

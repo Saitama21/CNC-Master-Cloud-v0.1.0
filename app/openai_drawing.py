@@ -39,30 +39,53 @@ def _validate_result(data: dict[str, Any]) -> dict[str, Any]:
                 z = float(item["z"])
             except (KeyError, TypeError, ValueError):
                 continue
-            if not (-100000 <= x <= 100000 and -100000 <= z <= 100000):
+            if not (0 <= x <= 100000 and -100000 <= z <= 100000):
                 continue
             clean.append({"x": round(x, 4), "z": round(z, 4)})
     if len(clean) < 2:
         raise ClientValidationError(
             "OpenAI не смог построить надёжный размерный контур. Проверьте, что в области видны профиль и размеры."
         )
-    # Remove immediate duplicates, which models occasionally produce for vertical steps.
+
     deduped: list[dict[str, float]] = []
-    for p in clean:
-        if not deduped or abs(p["x"] - deduped[-1]["x"]) > 1e-6 or abs(p["z"] - deduped[-1]["z"]) > 1e-6:
-            deduped.append(p)
+    for point in clean:
+        if not deduped or abs(point["x"] - deduped[-1]["x"]) > 1e-6 or abs(point["z"] - deduped[-1]["z"]) > 1e-6:
+            deduped.append(point)
+    if len(deduped) < 2:
+        raise ClientValidationError("После удаления повторов в AI-контуре осталось слишком мало точек.")
+
+    # SINUMERIK workflow used by the client starts at the front face Z0 and moves
+    # into the part in negative Z. Models sometimes return the same path backwards.
+    if deduped[-1]["z"] > deduped[0]["z"]:
+        deduped.reverse()
+    front_z = max(point["z"] for point in deduped)
+    for point in deduped:
+        point["z"] = round(point["z"] - front_z, 4)
+
+    increases = sum(
+        deduped[index + 1]["z"] > deduped[index]["z"] + 1e-4
+        for index in range(len(deduped) - 1)
+    )
     confidence = str(data.get("confidence", "low")).lower()
     if confidence not in {"high", "medium", "low"}:
         confidence = "low"
+    warnings = [str(item)[:500] for item in data.get("warnings", [])] if isinstance(data.get("warnings"), list) else []
+    if increases:
+        confidence = "low"
+        warnings.append("В AI-контуре обнаружено обратное движение по Z; проверьте порядок точек вручную.")
+
+    profile_type = str(data.get("profile_type", "outer")).lower()
+    if profile_type not in {"outer", "inner"}:
+        profile_type = "outer"
     return {
         "contour_xz_mm": deduped,
         "stock_diameter_mm": _safe_positive(data.get("stock_diameter_mm")),
         "stock_length_mm": _safe_positive(data.get("stock_length_mm")),
-        "profile_type": str(data.get("profile_type", "outer")),
+        "profile_type": profile_type,
         "confidence": confidence,
         "dimensions": data.get("dimensions") if isinstance(data.get("dimensions"), list) else [],
-        "warnings": data.get("warnings") if isinstance(data.get("warnings"), list) else [],
-        "questions": data.get("questions") if isinstance(data.get("questions"), list) else [],
+        "warnings": warnings,
+        "questions": [str(item)[:500] for item in data.get("questions", [])] if isinstance(data.get("questions"), list) else [],
         "summary": str(data.get("summary", ""))[:1200],
         "model": os.getenv("OPENAI_DRAWING_MODEL", "gpt-5"),
     }
@@ -92,13 +115,15 @@ async def analyze_drawing_region_with_openai(
 Режим профиля: {profile_type}. Координата X должна быть в режиме: {x_mode}.
 
 Правила:
-1. Не учитывай размерные линии, стрелки, штриховку, осевые, текст, рамку и скрытые линии как профиль детали.
-2. Начальная точка контура должна быть на торце Z=0. Вглубь детали Z идёт в минус.
-3. Для токарного профиля X является диаметром, если x_mode=diameter, иначе радиусом.
-4. Используй только явно читаемые размеры. Ничего не выдумывай.
-5. Сохраняй ступени двумя точками с одинаковым Z, фаски и конусы отдельными конечными точками.
-6. Если размерный масштаб определить нельзя, не создавай ложный контур: укажи вопрос в questions.
-7. Верни только JSON без markdown.
+1. Сначала найди горизонтальную ось вращения и определи, что перед тобой продольный вид или осевой разрез.
+2. Для outer используй только верхнюю наружную образующую вращаемой детали. Для inner используй только верхнюю образующую отверстия. Не дублируй нижнюю симметричную половину.
+3. Не принимай размерные линии, выносные линии, стрелки, штриховку, осевые, текст, рамку, резьбовые обозначения и отверстия болтового круга за профиль детали.
+4. Начальная точка должна быть на правом переднем торце Z=0. Далее двигайся влево/вглубь детали, поэтому Z не возрастает и обычно становится отрицательным.
+5. Для токарного профиля X является диаметром, если x_mode=diameter, иначе радиусом.
+6. Используй только явно читаемые размеры. Не вычисляй отсутствующие размеры по масштабу картинки и ничего не выдумывай.
+7. Каждую ступень сохраняй двумя последовательными точками с одинаковым Z. Фаски, конусы и дуги задавай отдельными конечными точками только при наличии размера.
+8. Если размеров недостаточно, верни confidence=low и перечисли недостающие значения в questions. Не подменяй их догадкой.
+9. Верни только JSON без markdown.
 
 Формат:
 {{
