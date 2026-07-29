@@ -1,5 +1,5 @@
 {
-  "version": "2.6.0",
+  "version": "2.7.0",
   "build": "2026-07-29-ai-stock-removal-logo-fit",
   "feature": "OpenAI selected-region to X/Z Stock Removal",
   "features": [
@@ -32,7 +32,7 @@
     "UPDATE_v2.4.0_DRAWING_INTELLIGENCE.txt": "d512dd37844be42540aef1380bbbd8eabc88c72edc742997f748cc35b6025f30",
     "UPDATE_v2.5.0_UA_TOOL_CATALOG.txt": "0024fd2155cc57eb8a42144c0ea9e639413122c29977ba609eccebe36b677215",
     "UPDATE_v2.5.1_AUTOCONTOUR_PRO.txt": "81b429605b0401c5c0768bebfe6063833112610f5c8b45f3af0abe5d67749217",
-    "UPDATE_v2.6.0_AI_STOCK_REMOVAL.txt": "6b0b398e59e4d772f79e385358a16f2444f94f04bdd29ab7927d39a19e2bde09",
+    "UPDATE_v2.7.0_AI_STOCK_REMOVAL.txt": "6b0b398e59e4d772f79e385358a16f2444f94f04bdd29ab7927d39a19e2bde09",
     "app/__init__.py": "1df8d53aba539e667ec551426125665f9d045da050789b5e5071be3c3ea242cf",
     "app/__pycache__/__init__.cpython-313.pyc": "2069648029e721f6189dde177735efa73c6a616e58d2b130b61490b6213a158d",
     "app/__pycache__/api_main.cpython-313.pyc": "5481c7450c030783e38ebd4b6d22e4d103ede538145769be2e6b0e37039bf8f3",
