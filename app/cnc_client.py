@@ -467,51 +467,86 @@ def analyze_pdf_bytes(
 
     candidate: list[dict[str, float]] = []
     confidence = "low"
+    diagnostics: dict[str, Any] = {"algorithm": "profile-v2", "candidates": 0}
     try:
         import cv2  # type: ignore
         import numpy as np  # type: ignore
 
         image = cv2.imdecode(np.frombuffer(png, dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
         if image is not None:
-            blur = cv2.GaussianBlur(image, (3, 3), 0)
-            edges = cv2.Canny(blur, 70, 180)
-            contours, _ = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
             height, width = image.shape[:2]
-            scored: list[tuple[float, Any]] = []
-            for contour in contours:
-                x, y, w, h = cv2.boundingRect(contour)
-                area = abs(cv2.contourArea(contour))
-                perimeter = cv2.arcLength(contour, True)
-                aspect = w / max(1.0, float(h))
-                center_y = y + h / 2.0
+            # Normalize contrast and build several edge maps. Technical drawings vary
+            # wildly: vector PDFs have razor-thin lines, scans have grey paper and noise.
+            norm = cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX)
+            blur = cv2.GaussianBlur(norm, (3, 3), 0)
+            edge_maps = [
+                cv2.Canny(blur, 45, 135),
+                cv2.Canny(blur, 80, 210),
+            ]
+            adaptive = cv2.adaptiveThreshold(
+                blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                cv2.THRESH_BINARY_INV, 31, 9,
+            )
+            # Close small gaps in outlines but avoid merging dimensions/text into one blob.
+            adaptive = cv2.morphologyEx(
+                adaptive, cv2.MORPH_CLOSE,
+                cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)), iterations=1,
+            )
+            edge_maps.append(adaptive)
 
-                # A turning profile is normally shown as an elongated side view.
-                # Reject page frames, tiny annotations, circles and the large front view.
-                if w < width * 0.18 or h < height * 0.012:
-                    continue
-                if w > width * 0.97 and h > height * 0.97:
-                    continue
-                if aspect < 1.6:
-                    continue
-                # Exclude nearly circular / square front views even inside a crop.
-                circularity = (4.0 * 3.141592653589793 * area / (perimeter * perimeter)) if perimeter > 0 else 0.0
-                if aspect < 2.0 and circularity > 0.45:
-                    continue
+            scored: list[tuple[float, Any, str]] = []
+            for source_index, edges in enumerate(edge_maps):
+                contours, hierarchy = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+                for contour in contours:
+                    x, y, w, h = cv2.boundingRect(contour)
+                    area = abs(cv2.contourArea(contour))
+                    perimeter = cv2.arcLength(contour, True)
+                    aspect = w / max(1.0, float(h))
+                    center_y = y + h / 2.0
+                    point_count = len(contour)
 
-                top_bonus = 2.0 if center_y < height * 0.48 else 0.4
-                aspect_bonus = min(aspect, 18.0)
-                width_bonus = 8.0 * (w / width)
-                thickness_penalty = 2.5 * (h / height)
-                score = perimeter * 0.02 + aspect_bonus + width_bonus + top_bonus - thickness_penalty
-                scored.append((score, contour))
+                    if w < width * (0.14 if crop else 0.20) or h < height * 0.008:
+                        continue
+                    if w > width * 0.985 and h > height * 0.985:
+                        continue
+                    if aspect < (1.15 if profile_type == "free" else 1.45):
+                        continue
+                    if point_count < 20 or perimeter < width * 0.12:
+                        continue
 
+                    circularity = (4.0 * math.pi * area / (perimeter * perimeter)) if perimeter > 0 else 0.0
+                    if profile_type != "free" and aspect < 2.0 and circularity > 0.42:
+                        continue
+
+                    # Reward long, horizontally oriented outlines with real vertical
+                    # variation. Penalize page borders, dimension lines and text rows.
+                    width_ratio = w / width
+                    height_ratio = h / height
+                    fill_ratio = area / max(1.0, float(w * h))
+                    line_like_penalty = 9.0 if height_ratio < 0.018 else 0.0
+                    border_penalty = 10.0 if x < 3 and y < 3 and w > width * 0.9 else 0.0
+                    text_penalty = 5.0 if aspect > 18 and height_ratio < 0.06 else 0.0
+                    position_bonus = 1.2 if center_y < height * 0.72 else 0.0
+                    score = (
+                        18.0 * width_ratio
+                        + min(aspect, 12.0)
+                        + min(perimeter / max(width, 1), 8.0)
+                        + 4.0 * min(height_ratio, 0.25)
+                        + 2.0 * min(fill_ratio, 0.35)
+                        + position_bonus
+                        - line_like_penalty - border_penalty - text_penalty
+                    )
+                    scored.append((score, contour, f"map-{source_index}"))
+
+            diagnostics["candidates"] = len(scored)
             if scored:
                 scored.sort(key=lambda item: item[0], reverse=True)
-                selected = scored[0][1].reshape(-1, 2)
+                selected_score, selected_contour, selected_source = scored[0]
+                selected = selected_contour.reshape(-1, 2)
+                diagnostics.update({"selected_score": round(float(selected_score), 3), "source": selected_source})
 
-                # Keep the upper chain of the selected closed outline.  Using the
-                # contour's native order avoids the old zig-zag caused by sorting
-                # unrelated points only by X coordinate.
+                # Split a closed outline into the two paths between its extreme X points.
+                # Outer profile follows the upper silhouette; inner follows the lower one.
                 left_i = int(np.argmin(selected[:, 0]))
                 right_i = int(np.argmax(selected[:, 0]))
 
@@ -522,52 +557,76 @@ def analyze_pdf_bytes(
 
                 path_a = contour_path(left_i, right_i)
                 path_b = contour_path(right_i, left_i)[::-1]
-                upper = path_a if float(np.mean(path_a[:, 1])) <= float(np.mean(path_b[:, 1])) else path_b
+                mean_a = float(np.mean(path_a[:, 1]))
+                mean_b = float(np.mean(path_b[:, 1]))
+                if profile_type == "inner":
+                    chosen = path_a if mean_a >= mean_b else path_b
+                elif profile_type == "free":
+                    chosen = path_a if len(path_a) >= len(path_b) else path_b
+                else:
+                    chosen = path_a if mean_a <= mean_b else path_b
 
-                # Collapse repeated X columns to the highest edge point, then
-                # simplify while preserving left-to-right profile order.
-                by_x: dict[int, tuple[float, float]] = {}
-                for px, py in upper:
-                    key = int(round(float(px)))
-                    current = by_x.get(key)
-                    if current is None or float(py) < current[1]:
-                        by_x[key] = (float(px), float(py))
-                ordered = [by_x[key] for key in sorted(by_x)]
+                # Build a stable left-to-right envelope. Median sampling suppresses
+                # arrowheads, hatching and isolated characters better than min/max alone.
+                buckets: dict[int, list[float]] = {}
+                for px, py in chosen:
+                    buckets.setdefault(int(round(float(px))), []).append(float(py))
+                ordered: list[tuple[float, float]] = []
+                for key in sorted(buckets):
+                    values = sorted(buckets[key])
+                    if profile_type == "inner":
+                        py = float(np.percentile(values, 75))
+                    elif profile_type == "outer":
+                        py = float(np.percentile(values, 25))
+                    else:
+                        py = float(np.median(values))
+                    ordered.append((float(key), py))
+
+                # Remove isolated spikes with a small median filter.
+                if len(ordered) >= 7:
+                    ys = np.array([p[1] for p in ordered], dtype=np.float32)
+                    smooth = ys.copy()
+                    for i in range(2, len(ys) - 2):
+                        smooth[i] = float(np.median(ys[i-2:i+3]))
+                    ordered = [(ordered[i][0], float(smooth[i])) for i in range(len(ordered))]
 
                 if len(ordered) >= 2:
                     curve = np.array(ordered, dtype=np.float32).reshape(-1, 1, 2)
-                    epsilon = max(1.0, 0.0025 * cv2.arcLength(curve, False))
+                    epsilon = max(0.8, 0.0018 * cv2.arcLength(curve, False))
                     approx = cv2.approxPolyDP(curve, epsilon, False)
                     simplified = [tuple(map(float, point[0])) for point in approx]
                 else:
                     simplified = ordered
 
-                # Remove almost duplicate points and cap payload size.
                 clean: list[tuple[float, float]] = []
                 for point in simplified:
                     if not clean or abs(point[0] - clean[-1][0]) >= 1.0 or abs(point[1] - clean[-1][1]) >= 1.0:
                         clean.append(point)
-                if len(clean) > 160:
-                    step = max(1, len(clean) // 160)
-                    clean = clean[::step]
-                    if clean[-1] != simplified[-1]:
-                        clean.append(simplified[-1])
+                if len(clean) > 180:
+                    indexes = np.linspace(0, len(clean) - 1, 180).astype(int)
+                    clean = [clean[int(i)] for i in indexes]
 
                 candidate = [{"px": round(px, 2), "py": round(py, 2)} for px, py in clean]
-                # Reject implausible zig-zags and profiles that do not span the selected view.
                 if len(candidate) >= 3:
                     xs = [p["px"] for p in candidate]
                     ys = [p["py"] for p in candidate]
                     x_span = max(xs) - min(xs)
                     y_span = max(ys) - min(ys)
                     monotonic = all(xs[i] <= xs[i + 1] + 1.5 for i in range(len(xs) - 1))
-                    jump_limit = max(8.0, y_span * 0.8)
+                    jump_limit = max(7.0, y_span * 0.55)
                     huge_jumps = sum(abs(ys[i + 1] - ys[i]) > jump_limit for i in range(len(ys) - 1))
-                    if x_span < width * 0.18 or not monotonic or huge_jumps > 1:
+                    flat_ratio = y_span / max(x_span, 1.0)
+                    diagnostics.update({"points": len(candidate), "x_span": round(x_span, 2), "y_span": round(y_span, 2), "huge_jumps": huge_jumps})
+                    if x_span < width * (0.14 if crop else 0.19) or not monotonic or huge_jumps > 1 or flat_ratio < 0.004:
                         candidate = []
                         confidence = "low"
                     else:
-                        confidence = "high" if crop else "medium"
+                        if crop and selected_score >= 8.0 and huge_jumps == 0:
+                            confidence = "high"
+                        elif selected_score >= 6.0:
+                            confidence = "medium"
+                        else:
+                            confidence = "low"
                 else:
                     candidate = []
                     confidence = "low"
@@ -590,6 +649,7 @@ def analyze_pdf_bytes(
         "crop_applied": bool(crop),
         "rotation": rotation,
         "profile_type": profile_type,
+        "autocontour_diagnostics": diagnostics,
         "warnings": [
             "Автоконтур является подсказкой, а не измерительным результатом.",
             "Обязательно задайте масштаб по известному размеру и вручную проверьте все точки.",
@@ -646,6 +706,7 @@ def analyze_image_bytes(data: bytes, rotation: int = 0, profile_type: str = "out
         "crop_applied": False,
         "rotation": rotation,
         "profile_type": profile_type,
+        "autocontour_diagnostics": diagnostics,
         "warnings": [
             "Фото не содержит текстового слоя: размеры необходимо подтвердить вручную.",
             "Перед построением задайте масштаб по известному размеру.",
