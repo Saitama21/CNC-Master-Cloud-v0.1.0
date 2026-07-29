@@ -3,7 +3,7 @@ CLIENT_HTML = r'''<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CNC Assistant Client Pro — AI Contour</title>
+<title>CNC Assistant Client Pro v4.1 — Universal Vision AI</title>
 <!-- CNC Assistant Client Pro v3.0 AI Stock Removal Fix | Compatibility history: v2.3.0; v2.3.0 PRO; v2.4.0 Drawing Intelligence; Stainless logo; v2.7.0 PRO -->
 <style>
 :root{color-scheme:dark;--bg:#071018;--panel:#101b25;--panel2:#152432;--line:#294154;--text:#edf5fb;--muted:#93a8b8;--accent:#3b91e8;--ok:#49c987;--warn:#ffc766;--danger:#ff6d75}
@@ -116,10 +116,10 @@ button:hover{transform:translateY(-1px);border-color:rgba(99,164,255,.55);box-sh
 <!-- legacy compatibility: v2.3.0 PRO | ROZFOOD | data:image/png;base64, (logo intentionally not rendered in v3.0) -->
 <header class="iosHeader">
   <div class="brandBlock">
-    <div class="brandText"><div class="brandTitle">CNC Assistant Client Pro</div><div class="brandSub">AI Contour · PDF → Stock Removal</div></div>
-    <span class="badge">v3.1 OpenCV + AI</span>
+    <div class="brandText"><div class="brandTitle">CNC Assistant Client Pro</div><div class="brandSub">CAD · PDF · STEP · DXF · AI · Stock Removal</div></div>
+    <span class="badge">v4.1 Universal Vision AI</span>
   </div>
-  <div class="flowSteps" aria-label="Этапы работы"><span class="active">1 PDF</span><span>2 Область</span><span>3 AI-контур</span><span>4 Проверка</span><span>5 SINUMERIK</span></div>
+  <div class="flowSteps" aria-label="Этапы работы"><span class="active">1 Файл</span><span>2 Геометрия</span><span>3 AI-анализ</span><span>4 Проверка</span><span>5 SINUMERIK</span></div>
   <div class="spacer"></div>
   <div class="headerActions"><button id="loadProjects">Проекты</button><button id="saveBtn">Сохранить</button><button id="generateBtn" class="primary">Проверить контур</button></div>
 </header>
@@ -145,8 +145,8 @@ button:hover{transform:translateY(-1px);border-color:rgba(99,164,255,.55);box-sh
     <div class="field"><label>Система координат и назначение контура</label><select id="workMode"><option value="turn">Токарный профиль X/Z</option><option value="mill">Фрезерный контур X/Y</option><option value="manual">Ручной универсальный</option></select></div>
     <div id="workModeInfo" class="small ok" style="margin-top:8px">Токарный режим: нужен продольный вид или разрез детали.</div>
   </div>
-  <div class="section" id="module-pdf"><h2>📄 PDF / фото чертежа</h2>
-    <div class="field"><input id="pdfFile" type="file" accept="application/pdf,image/png,image/jpeg,image/webp"></div>
+  <div class="section" id="module-pdf"><h2>📂 Импорт чертежа: STEP / DXF / PDF / фото / SolidWorks</h2>
+    <div class="field"><input id="pdfFile" type="file" data-legacy-accept="application/pdf,image/png,image/jpeg,image/webp" accept=".pdf,.dxf,.step,.stp,.iges,.igs,.sldprt,.sldasm,.slddrw,.svg,.stl,image/png,image/jpeg,image/webp"></div>
     <div class="row" style="margin-top:7px"><input id="pdfPage" type="number" min="1" value="1" style="width:75px"><button id="uploadPdf">Загрузить страницу</button></div>
     <div class="row" style="margin-top:7px"><select id="profileType"><option value="outer">Наружный профиль</option><option value="inner">Внутренний профиль</option><option value="free">Произвольный контур</option></select><button id="selectRegion">▭ Выбрать область</button><button id="reanalyzeRegion">✨ Распознать область</button></div>
     <div class="row" style="margin-top:7px"><button id="rotatePdf">↻ Повернуть 90°</button><button id="clearRegion">Сбросить область</button></div>
@@ -413,7 +413,7 @@ async function buildAiRegion(){
   const status=$('aiRegionStatus');
   if(state.workMode!=='turn')return alert('AI Stock Removal сейчас предназначен для токарного профиля X/Z.');
   try{
-    const blob=await selectedRegionBlob();status.className='small aiStatus busy';status.textContent='OpenCV очищает область, затем GPT строит X/Z…';$('aiBuildRegion').disabled=true;
+    const blob=await selectedRegionBlob();status.className='small aiStatus busy';status.textContent='GPT проверяет тип вида, сравнивает исходник с OpenCV и строит X/Z…';$('aiBuildRegion').disabled=true;
     const fd=new FormData();fd.append('image',blob,'drawing-region.png');fd.append('telegram_id',$('telegramId').value||0);fd.append('profile_type',$('profileType').value);fd.append('x_mode',$('stockXMode').value);appendCvOptions(fd);
     const res=await fetch('/api/v1/client/ai/region',{method:'POST',body:fd});const data=await res.json();if(!res.ok)throw new Error(data.detail||'Ошибка AI-анализа');
     const pts=Array.isArray(data.contour_xz_mm)?data.contour_xz_mm:[];if(pts.length<2)throw new Error('AI не вернул достаточный контур.');
@@ -421,7 +421,7 @@ async function buildAiRegion(){
     state.scalePxMm=null;state.origin=null;ensureManualFrame();state.pointsPx=pts.map(p=>machineToPixel({x:Number(p.x),z:Number(p.z)})).filter(Boolean);state.aiRegion=data;state.candidateConfidence=data.confidence||'low';
     state.dimensionEntities=(data.dimensions||[]).map(normalizeDimensionEntity);renderDimensionReview();syncContourText();draw();$('operatorConfirmed').checked=false;
     const issues=[...(data.warnings||[]),...(data.questions||[]).map(q=>'Нужно уточнить: '+q)];
-    status.className='small aiStatus '+(data.confidence==='high'?'ok':'warn');const cv=data.opencv_diagnostics||{};status.textContent=`Готово: ${pts.length} точек, уверенность ${data.confidence||'low'}. OpenCV: удалено ${cv.removed_small_components||0} мелких элементов. ${data.summary||''}${issues.length?'\n'+issues.join('\n'):''}`;
+    status.className='small aiStatus '+(data.confidence==='high'?'ok':'warn');const cv=data.opencv_diagnostics||{},gv=data.geometry_validation||{};status.textContent=`Вид: ${data.view_type||'не определён'}. Точек: ${pts.length}. Уверенность: ${data.confidence||'low'}. Геометрия: ${gv.valid?'PASS':'CHECK'}. OpenCV удалил ${cv.removed_small_components||0} элементов. ${data.summary||''}${issues.length?'\n'+issues.join('\n'):''}`;
     $('stockGuideStatus').textContent='AI-контур построен. Проверьте таблицу X/Z, размеры и ноль, затем поставьте галочку подтверждения.';
     $('module-contour').scrollIntoView({behavior:'smooth',block:'start'});
   }catch(err){status.className='small aiStatus warn';status.textContent='Ошибка: '+err.message;}finally{$('aiBuildRegion').disabled=false}
@@ -438,7 +438,7 @@ async function analyzePdf(useCrop=false){
   }
   $('pdfInfo').textContent=useCrop?'Распознавание выбранной области…':'Обработка PDF…';
   try{
-    const res=await fetch('/api/v1/client/pdf/analyze',{method:'POST',body:fd});const data=await res.json();if(!res.ok)throw new Error(data.detail||'Ошибка PDF');
+    const ext=(file.name.split('.').pop()||'').toLowerCase();const classic=['pdf','png','jpg','jpeg','webp'].includes(ext);const endpoint=classic?'/api/v1/client/pdf/analyze':'/api/v1/client/drawing/import';const res=await fetch(endpoint,{method:'POST',body:fd});const data=await res.json();if(!res.ok)throw new Error(data.detail||'Ошибка импорта');if(!classic){$('pdfInfo').innerHTML=`Формат: <b>${data.detected_format}</b> · маршрут: <b>${data.route}</b> · точность: <b>${data.precision}</b><br>${data.analysis?.message||'Геометрия импортирована.'}`;state.pdfMeta=data;return;}
     const img=new Image();
     img.onload=()=>{
       state.pdfImage=img;state.pdfMeta=data;state.pdfCandidate=data.candidate_pixels||[];state.candidateConfidence=data.candidate_confidence||'low';
@@ -492,7 +492,7 @@ updateWorkMode();renderContourTable();addOperation('turn_rough');addOperation('t
 window.addEventListener("DOMContentLoaded",()=>{
  const app=document.querySelector(".app"), side=app?.querySelector("aside.panel"), main=app?.querySelector("main.canvasWrap"), results=app?.querySelector("section.results");
  if(!app||!side||!main||!results)return;
- const versionBadge=document.querySelector(".badge"); if(versionBadge) versionBadge.textContent="v3.1 OpenCV + AI";
+ const versionBadge=document.querySelector(".badge"); if(versionBadge) versionBadge.textContent="v4.0 Vision + OpenCV";
  const contour=document.getElementById("module-contour");
  if(contour){contour.classList.add("panel","v270-contour-panel");app.insertBefore(contour,main)}
  const sections=[...side.querySelectorAll(":scope > .section")];

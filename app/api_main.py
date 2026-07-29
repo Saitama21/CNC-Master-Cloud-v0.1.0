@@ -12,6 +12,7 @@ from app.admin_ui import ADMIN_HTML
 from app.client_ui import CLIENT_HTML
 from app.cnc_client import ClientValidationError, analyze_pdf_bytes, analyze_image_bytes, generate_engineering_plan, preprocess_drawing_region_bytes
 from app.openai_drawing import analyze_drawing_region_with_openai
+from app.drawing_import import import_drawing_bytes
 from app.catalog_data import CATEGORY_LABELS, catalog_count, get_item, search_catalog
 from app.config import settings
 from app.db import SessionLocal, get_session, init_db
@@ -80,7 +81,7 @@ async def lifespan(_: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version="3.1.0",
-    description="CNC Assistant Client Pro v3.1.0: OpenCV drawing cleanup, AI contour and SINUMERIK 828D.",
+    description="CNC Assistant Client Pro v4.1: universal CAD/PDF import, AI vision, OpenCV and geometric contour validation.",
     lifespan=lifespan,
 )
 
@@ -129,6 +130,27 @@ async def _require_feature(
     if not decision.get("allowed"):
         raise HTTPException(status_code=429, detail=decision.get("reason") or "Функция недоступна")
     return decision
+
+
+
+
+@app.post("/api/v1/client/drawing/import", tags=["engineering-client"])
+async def client_import_drawing(
+    file: UploadFile = File(...),
+    page_number: int = Form(default=1),
+    telegram_id: int = Form(default=0),
+    rotation: int = Form(default=0),
+    profile_type: str = Form(default="outer"),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    await _require_feature(session, telegram_id, "pdf_scan")
+    data = await file.read()
+    if len(data) > 50 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Файл больше 50 МБ.")
+    try:
+        return import_drawing_bytes(filename=file.filename or "drawing", content_type=file.content_type, data=data, page_number=page_number, rotation=rotation, profile_type=profile_type)
+    except ClientValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.post("/api/v1/client/pdf/analyze", tags=["engineering-client"])
@@ -209,17 +231,16 @@ async def client_ai_region(
     if not data or len(data) > 12 * 1024 * 1024:
         raise HTTPException(status_code=422, detail="Выбранная область пуста или больше 12 МБ.")
     import base64
+    original_mime = image.content_type if image.content_type and image.content_type.startswith("image/") else "image/png"
+    original_data_url = f"data:{original_mime};base64," + base64.b64encode(data).decode("ascii")
     preprocessing = None
+    cleaned_data_url = None
     if use_opencv:
         preprocessing = preprocess_drawing_region_bytes(data, remove_text=remove_text, remove_hatching=remove_hatching, strengthen_lines=strengthen_lines, close_gaps=close_gaps)
-        data = preprocessing["cleaned_bytes"]
-        mime = "image/png"
-    else:
-        mime = image.content_type if image.content_type and image.content_type.startswith("image/") else "image/png"
-    image_data_url = f"data:{mime};base64," + base64.b64encode(data).decode("ascii")
+        cleaned_data_url = preprocessing["cleaned_image_data_url"]
     try:
         result = await analyze_drawing_region_with_openai(
-            image_data_url, profile_type=profile_type, x_mode=x_mode
+            original_data_url, cleaned_image_data_url=cleaned_data_url, profile_type=profile_type, x_mode=x_mode
         )
         if preprocessing:
             result["opencv_diagnostics"] = preprocessing["diagnostics"]

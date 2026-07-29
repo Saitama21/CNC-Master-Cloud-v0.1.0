@@ -42,9 +42,17 @@ def _validate_result(data: dict[str, Any]) -> dict[str, Any]:
             if not (0 <= x <= 100000 and -100000 <= z <= 100000):
                 continue
             clean.append({"x": round(x, 4), "z": round(z, 4)})
+    view_type = str(data.get("view_type", "longitudinal_profile" if clean else "unknown")).lower()
+    valid_views = {"longitudinal_profile", "axial_section"}
+    is_valid_view = bool(data.get("is_valid_turning_view", view_type in valid_views)) and view_type in valid_views
+    if not is_valid_view:
+        labels = {"end_view":"торцевой вид", "radial_section":"радиальный разрез", "isometric":"изометрия", "unknown":"неопределённый вид"}
+        raise ClientValidationError(
+            f"Выбран {labels.get(view_type, view_type)}. Для контура X/Z нужен продольный вид или осевой разрез."
+        )
     if len(clean) < 2:
         raise ClientValidationError(
-            "OpenAI не смог построить надёжный размерный контур. Проверьте, что в области видны профиль и размеры."
+            "OpenAI распознал токарный вид, но не смог построить размерный контур. Увеличьте область так, чтобы были видны профиль, ось и размеры."
         )
 
     deduped: list[dict[str, float]] = []
@@ -77,7 +85,14 @@ def _validate_result(data: dict[str, Any]) -> dict[str, Any]:
     profile_type = str(data.get("profile_type", "outer")).lower()
     if profile_type not in {"outer", "inner"}:
         profile_type = "outer"
+    geometry = validate_turning_contour(deduped)
+    if not geometry["valid"]:
+        confidence = "low"
+        warnings.extend(geometry["errors"])
     return {
+        "view_type": view_type,
+        "is_valid_turning_view": is_valid_view,
+        "geometry_validation": geometry,
         "contour_xz_mm": deduped,
         "stock_diameter_mm": _safe_positive(data.get("stock_diameter_mm")),
         "stock_length_mm": _safe_positive(data.get("stock_length_mm")),
@@ -91,6 +106,30 @@ def _validate_result(data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def validate_turning_contour(points: list[dict[str, float]]) -> dict[str, Any]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    if len(points) < 2:
+        errors.append("Недостаточно точек.")
+        return {"valid": False, "errors": errors, "warnings": warnings}
+    for i, p in enumerate(points):
+        if p["x"] < 0:
+            errors.append(f"Точка {i+1}: X не может быть отрицательным.")
+    for i in range(len(points)-1):
+        a,b=points[i],points[i+1]
+        if b["z"] > a["z"] + 1e-4:
+            errors.append(f"Между точками {i+1} и {i+2} Z движется обратно.")
+        if abs(a["x"]-b["x"]) < 1e-6 and abs(a["z"]-b["z"]) < 1e-6:
+            errors.append(f"Точки {i+1} и {i+2} совпадают.")
+    zspan=max(p["z"] for p in points)-min(p["z"] for p in points)
+    xspan=max(p["x"] for p in points)-min(p["x"] for p in points)
+    if zspan < 0.05:
+        errors.append("Профиль почти не имеет длины по Z; вероятно выбрана размерная или торцевая линия.")
+    if xspan == 0:
+        warnings.append("Все точки имеют одинаковый X; проверьте, действительно ли профиль цилиндрический.")
+    return {"valid": not errors, "errors": errors, "warnings": warnings, "z_span_mm": round(zspan,4), "x_span_mm": round(xspan,4)}
+
+
 def _safe_positive(value: Any) -> float | None:
     try:
         number = float(value)
@@ -101,6 +140,7 @@ def _safe_positive(value: Any) -> float | None:
 
 async def analyze_drawing_region_with_openai(
     image_data_url: str,
+    cleaned_image_data_url: str | None = None,
     *,
     profile_type: str = "outer",
     x_mode: str = "diameter",
@@ -110,7 +150,10 @@ async def analyze_drawing_region_with_openai(
         raise ClientValidationError("На Railway не задана переменная OPENAI_API_KEY.")
     model = os.getenv("OPENAI_DRAWING_MODEL", "gpt-5").strip() or "gpt-5"
     prompt = f"""
-Ты инженер по токарной обработке и читаешь только выделенную область машиностроительного чертежа.
+Ты инженер по токарной обработке. Перед тобой исходный фрагмент чертежа и, возможно, его OpenCV-очистка.
+Сначала классифицируй изображение: longitudinal_profile, axial_section, end_view, radial_section, isometric или unknown.
+Строить X/Z разрешено только для longitudinal_profile или axial_section. Для остальных типов верни contour_xz_mm=[] и confidence=low.
+Нужно восстановить профиль для SINUMERIK Stock Removal.
 Нужно восстановить профиль для SINUMERIK Stock Removal.
 Режим профиля: {profile_type}. Координата X должна быть в режиме: {x_mode}.
 
@@ -127,6 +170,8 @@ async def analyze_drawing_region_with_openai(
 
 Формат:
 {{
+  "view_type":"longitudinal_profile|axial_section|end_view|radial_section|isometric|unknown",
+  "is_valid_turning_view":true,
   "profile_type":"outer|inner",
   "confidence":"high|medium|low",
   "stock_diameter_mm": number|null,
@@ -138,15 +183,19 @@ async def analyze_drawing_region_with_openai(
   "questions":["какого размера не хватает"]
 }}
 """.strip()
+    content = [
+        {"type": "input_text", "text": prompt},
+        {"type": "input_text", "text": "ИЗОБРАЖЕНИЕ 1: исходный фрагмент. Он является главным источником размеров."},
+        {"type": "input_image", "image_url": image_data_url, "detail": "high"},
+    ]
+    if cleaned_image_data_url:
+        content.extend([
+            {"type": "input_text", "text": "ИЗОБРАЖЕНИЕ 2: OpenCV-очистка. Используй её только для поиска линий; размеры сверяй с исходником."},
+            {"type": "input_image", "image_url": cleaned_image_data_url, "detail": "high"},
+        ])
     payload = {
         "model": model,
-        "input": [{
-            "role": "user",
-            "content": [
-                {"type": "input_text", "text": prompt},
-                {"type": "input_image", "image_url": image_data_url, "detail": "high"},
-            ],
-        }],
+        "input": [{"role": "user", "content": content}],
     }
     timeout = aiohttp.ClientTimeout(total=120)
     async with aiohttp.ClientSession(timeout=timeout) as session:
