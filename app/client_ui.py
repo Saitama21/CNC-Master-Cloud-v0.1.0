@@ -461,7 +461,7 @@ updateWorkMode();renderContourTable();addOperation('turn_rough');addOperation('t
 window.addEventListener("DOMContentLoaded",()=>{
  const app=document.querySelector(".app"), side=app?.querySelector("aside.panel"), main=app?.querySelector("main.canvasWrap"), results=app?.querySelector("section.results");
  if(!app||!side||!main||!results)return;
- document.querySelector(".productMeta .badge").textContent="v2.8.0 PRO";
+ const versionBadge=document.querySelector(".badge"); if(versionBadge) versionBadge.textContent="v3.0 AI Edition";
  const contour=document.getElementById("module-contour");
  if(contour){contour.classList.add("panel","v270-contour-panel");app.insertBefore(contour,main)}
  const sections=[...side.querySelectorAll(":scope > .section")];
