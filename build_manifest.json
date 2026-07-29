@@ -1,5 +1,5 @@
 {
-  "version": "2.8.0",
+  "version": "3.0.0",
   "build": "2026-07-29-ai-stock-removal-quality-fix",
   "base": "v2.7.0 Desktop UI Rebuild + v2.6.0 AI Stock Removal",
   "feature": "Selected PDF region -> AI X/Z contour -> operator-confirmed Stock Removal",
@@ -22,7 +22,7 @@
   "sha256": {
     ".env.example": "34296092682556ff6420a7a5b3d2af8d1a2ea771ae6254d1b0f7a4dd88b91048",
     ".gitignore": "d21656f79e96d9aa0bd4cc24becde6cb19c2527389b09de1b28f1760d0ed83e6",
-    "CNC_Master_Cloud_v2.8.0_TEST_REPORT.txt": "7e66e84007c9d08e96e435a544c48f22e558f733b7915297701fab110cc54a9a",
+    "CNC_Master_Cloud_v3.0.0_TEST_REPORT.txt": "7e66e84007c9d08e96e435a544c48f22e558f733b7915297701fab110cc54a9a",
     "Dockerfile": "acf7651443400ba88490f13a470fc5d74ec8ea58ce8a238e85c75ee7ec62dd01",
     "ENGINEERING_CLIENT_README.md": "e1c4aeb2730856e97e81e5141c6a1f63be543bcad3e76eec416d829837b5f6e6",
     "Makefile": "d2dd25a25dca641aa0c8aeb66f1f5f3b00be9fbaf92ad551d856b766375feed4",
@@ -42,7 +42,7 @@
     "UPDATE_v2.5.1_AUTOCONTOUR_PRO.txt": "81b429605b0401c5c0768bebfe6063833112610f5c8b45f3af0abe5d67749217",
     "UPDATE_v2.6.0_AI_STOCK_REMOVAL.txt": "6b0b398e59e4d772f79e385358a16f2444f94f04bdd29ab7927d39a19e2bde09",
     "UPDATE_v2.7.0_DESKTOP_UI.txt": "f5cf869241ec54346787646fa51c926160f4657801687a4cc9e68d2647e4d096",
-    "UPDATE_v2.8.0_AI_STOCK_REMOVAL_FIX.txt": "15fe1d69b2221590a9f6983d11b6a0146cdb037b2f25f530299d4d246ec741fa",
+    "UPDATE_v3.0.0_AI_STOCK_REMOVAL_FIX.txt": "15fe1d69b2221590a9f6983d11b6a0146cdb037b2f25f530299d4d246ec741fa",
     "app/__init__.py": "1df8d53aba539e667ec551426125665f9d045da050789b5e5071be3c3ea242cf",
     "app/admin_ui.py": "035526946b33f2124502a19edc79f0d9c5d126df2a0febe1b2040897c77303be",
     "app/api_client.py": "d490d3cdf9e7e5ca45283ea4b215be04d6705ec404b3e733a7a8488b58b00db1",
