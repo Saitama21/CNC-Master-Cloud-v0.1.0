@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Personal AI Client</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">AI</div>
+        <div><strong>Personal Client</strong><span>Фото · PDF · SLDDRW · Анализ</span></div>
+      </div>
+      <nav>
+        <button class="nav-item active" data-view="analysis">✦ Новый анализ</button>
+        <button class="nav-item" data-view="history">◷ История</button>
+        <button class="nav-item" data-view="settings">⚙ Настройки</button>
+      </nav>
+      <div class="status-card">
+        <span class="status-dot" id="statusDot"></span>
+        <div><strong id="statusTitle">Проверка...</strong><small id="statusText">Соединение с сервером</small></div>
+      </div>
+      <div class="sidebar-footer">Создатель: Єрошов Іван<br>Версия 1.1 MVP</div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div><h1 id="pageTitle">Новый анализ</h1><p id="pageSubtitle">Загрузите изображение, PDF или SLDDRW и задайте вопрос</p></div>
+        <button id="newAnalysisBtn" class="ghost-button">＋ Очистить</button>
+      </header>
+
+      <section id="analysisView" class="view active">
+        <div class="workspace-grid">
+          <section class="panel media-panel">
+            <div class="panel-heading"><div><span class="eyebrow">01 · Файл</span><h2>Область анализа</h2></div><span id="fileBadge" class="badge">Нет файла</span></div>
+            <label id="dropZone" class="drop-zone">
+              <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.slddrw,application/octet-stream" hidden />
+              <div class="drop-icon">⇧</div>
+              <strong>Перетащите файл сюда</strong>
+              <span>или нажмите для выбора · JPG, PNG, WEBP, PDF, SLDDRW</span>
+            </label>
+            <div id="previewArea" class="preview-area hidden">
+              <canvas id="imageCanvas"></canvas>
+              <iframe id="pdfPreview" title="Предпросмотр PDF"></iframe>
+              <div id="selectionHint" class="selection-hint">Проведите мышью или пальцем, чтобы выделить область</div>
+            </div>
+            <div class="media-toolbar">
+              <button id="selectAllBtn" class="small-button" disabled>Выделить всё</button>
+              <button id="clearSelectionBtn" class="small-button" disabled>Сбросить рамку</button>
+              <span id="selectionInfo">Область не выбрана</span>
+            </div>
+          </section>
+
+          <section class="panel prompt-panel">
+            <div class="panel-heading"><div><span class="eyebrow">02 · Задание</span><h2>Что нужно сделать</h2></div></div>
+            <div class="quick-prompts">
+              <button data-prompt="Подробно опиши, что видно на изображении. Отдельно укажи важные детали и неуверенные места.">Описание</button>
+              <button data-prompt="Найди возможные дефекты, повреждения или отклонения. Укажи степень уверенности и практические действия.">Дефекты</button>
+              <button data-prompt="Извлеки весь читаемый текст и структурируй его. Неразборчивые фрагменты пометь отдельно.">Текст</button>
+              <button data-prompt="Проанализируй технический документ или чертёж. Выдели размеры, допуски, материалы и спорные места.">Тех-анализ</button>
+            </div>
+            <textarea id="promptInput" placeholder="Например: проанализируй выделенный участок, найди дефекты и объясни, что делать дальше..."></textarea>
+            <button id="analyzeBtn" class="primary-button" disabled><span>✦</span> Запустить анализ</button>
+            <div id="progress" class="progress hidden"><span></span><p>Файл обрабатывается и отправляется модели...</p></div>
+          </section>
+        </div>
+
+        <section class="panel result-panel">
+          <div class="panel-heading"><div><span class="eyebrow">03 · Результат</span><h2>Ответ ассистента</h2></div><div id="resultMeta" class="result-meta"></div></div>
+          <div id="resultEmpty" class="result-empty"><div>✦</div><strong>Здесь появится результат</strong><span>Он сохранится в истории автоматически</span></div>
+          <article id="resultContent" class="result-content hidden"></article>
+        </section>
+      </section>
+
+      <section id="historyView" class="view">
+        <div class="panel history-panel">
+          <div class="panel-heading"><div><span class="eyebrow">Журнал</span><h2>История анализов</h2></div><button id="refreshHistoryBtn" class="small-button">Обновить</button></div>
+          <div id="historyList" class="history-list"></div>
+        </div>
+      </section>
+
+      <section id="settingsView" class="view">
+        <div class="settings-grid">
+          <div class="panel setting-card"><span class="eyebrow">Модель</span><h2 id="modelName">—</h2><p>Меняется переменной <code>OPENAI_MODEL</code> на сервере.</p></div>
+          <div class="panel setting-card"><span class="eyebrow">Режим</span><h2 id="modeName">—</h2><p>Тестовый режим не расходует API и возвращает демонстрационный ответ.</p></div>
+          <div class="panel setting-card"><span class="eyebrow">Лимит файла</span><h2 id="fileLimit">—</h2><p>Допустимы JPEG, PNG, WEBP, PDF и SLDDRW.</p></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
